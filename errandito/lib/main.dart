@@ -32,7 +32,7 @@ class ErrandditoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp( 
+    return MaterialApp(
       title: 'Erranddito',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -68,10 +68,14 @@ class ErrandditoApp extends StatelessWidget {
         '/task-complete-earnings': (context) => const PaymentEarningsPage(),
         '/activity-planner': (context) => const ActivityPlannerPage(),
         '/activity': (context) => const ActivityPlannerPage(),
-        '/steward-wallet-budget-allocated': (context) => const StewardWalletBudgetAllocatedPage(),
-        '/errand-execution-payment': (context) => const ErrandExecutionPaymentPage(),
-        '/steward-execution-completed': (context) => const ErrandExecutionPaymentPage(),
-        '/grocery-pickup-details': (context) => const GroceryPickupDetailsPage(),
+        '/steward-wallet-budget-allocated': (context) =>
+            const StewardWalletBudgetAllocatedPage(),
+        '/errand-execution-payment': (context) =>
+            const ErrandExecutionPaymentPage(),
+        '/steward-execution-completed': (context) =>
+            const ErrandExecutionPaymentPage(),
+        '/grocery-pickup-details': (context) =>
+            const GroceryPickupDetailsPage(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
@@ -281,15 +285,13 @@ class AestheticSplashScreen extends StatelessWidget {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [
-                                    navy,
-                                    teal,
-                                  ],
+                                  colors: [navy, teal],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        const Color(0xFF191C1E).withOpacity(0.12),
+                                    color: const Color(
+                                      0xFF191C1E,
+                                    ).withOpacity(0.12),
                                     offset: const Offset(0, 24),
                                     blurRadius: 48,
                                   ),
@@ -378,10 +380,7 @@ class AestheticSplashScreen extends StatelessWidget {
               child: Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: background,
-                      width: 32,
-                    ),
+                    border: Border.all(color: background, width: 32),
                   ),
                 ),
               ),
@@ -448,10 +447,7 @@ class SplashProgressIndicator extends StatelessWidget {
 class FeatureText extends StatelessWidget {
   final String label;
 
-  const FeatureText({
-    super.key,
-    required this.label,
-  });
+  const FeatureText({super.key, required this.label});
 
   static const Color mutedText = Color(0xFF71787E);
   static const Color darkGreen = Color(0xFF004035);
@@ -487,10 +483,7 @@ class FeatureText extends StatelessWidget {
 class PlaceholderPage extends StatelessWidget {
   final String title;
 
-  const PlaceholderPage({
-    super.key,
-    required this.title,
-  });
+  const PlaceholderPage({super.key, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -506,9 +499,7 @@ class PlaceholderPage extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        iconTheme: const IconThemeData(
-          color: Color(0xFF003C56),
-        ),
+        iconTheme: const IconThemeData(color: Color(0xFF003C56)),
       ),
       body: Center(
         child: Text(
