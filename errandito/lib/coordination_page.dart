@@ -1,306 +1,352 @@
 import 'package:flutter/material.dart';
+import 'messages_page.dart';
 
-class CoordinationChatPage extends StatelessWidget {
+class CoordinationChatPage extends StatefulWidget {
   const CoordinationChatPage({super.key});
 
-  static const Color background = Color(0xFFF8F9FD);
-  static const Color navy = Color(0xFF003C56);
-  static const Color green = Color(0xFF004035);
-  static const Color grayText = Color(0xFF536167);
-  static const Color secureText = Color(0xFF58676D);
-  static const Color lightPanel = Color(0xFFF2F3F7);
-  static const Color borderColor = Color(0xFFECEEF1);
+  @override
+  State<CoordinationChatPage> createState() => _CoordinationChatPageState();
+}
 
-  static const List<ChatMessage> messages = [
-    ChatMessage(
-      side: ChatSide.left,
-      text: 'Good pm, boss. naa nako sa grocerihan, naa pa kay gusto ipapalit?',
-      time: '09:12 AM',
+class _CoordinationChatPageState extends State<CoordinationChatPage> {
+  final TextEditingController messageController = TextEditingController();
+  final ScrollController scrollController = ScrollController();
+
+  final List<ChatMessage> messages = [
+    const ChatMessage(
+      text: 'Hi! I accepted your parcel pickup errand.',
+      time: '9:16 AM',
+      isMine: true,
     ),
-    ChatMessage(
-      side: ChatSide.right,
-      text: 'Paapil nalag palit ug loaf bread mga lima.',
-      time: '09:14 AM',
+    const ChatMessage(
+      text: 'Thank you! Please pick it up at JRS Panabo.',
+      time: '9:17 AM',
+      isMine: false,
     ),
-    ChatMessage(
-      side: ChatSide.left,
-      text: 'Ok boss, noted!',
-      time: '09:28 AM',
-      tag: 'Inventory Check',
+    const ChatMessage(
+      text: 'Got it. Is the parcel already paid?',
+      time: '9:18 AM',
+      isMine: true,
     ),
-    ChatMessage(
-      side: ChatSide.right,
-      text:
-          "Perfect, thank you! One last change: I won't be home until 11:30 AM. Is it okay to leave the bags with the concierge?",
-      time: '09:30 AM',
+    const ChatMessage(
+      text: 'Yes, it is already paid. Just bring your valid ID.',
+      time: '9:18 AM',
+      isMine: false,
+    ),
+    const ChatMessage(
+      text: 'Okay. I’ll update the task status once I arrive.',
+      time: '9:19 AM',
+      isMine: true,
     ),
   ];
 
   @override
+  void dispose() {
+    messageController.dispose();
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  void sendMessage() {
+    final String text = messageController.text.trim();
+
+    if (text.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      messages.add(ChatMessage(text: text, time: 'Now', isMine: true));
+      messageController.clear();
+    });
+
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (scrollController.hasClients) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Object? argument = ModalRoute.of(context)?.settings.arguments;
+
+    final MessageItem? conversation = argument is MessageItem ? argument : null;
+
+    final String name = conversation?.name ?? 'Ella Cruz';
+    final String task = conversation?.task ?? 'Courier Parcel Pickup';
+    final String image =
+        conversation?.image ?? 'assets/images/helper_female.png';
+    final String status = conversation?.status ?? 'In Progress';
+
     return Scaffold(
-      backgroundColor: background,
-      body: Column(
+      backgroundColor: const Color(0xFFF8F9FD),
+      body: SafeArea(
+        child: Column(
+          children: [
+            ChatHeader(
+              name: name,
+              image: image,
+              onBackTap: () {
+                Navigator.pop(context);
+              },
+              onStatusTap: () {
+                Navigator.pushNamed(context, '/execution-status');
+              },
+            ),
+
+            TaskContextCard(task: task, status: status),
+
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                physics: const BouncingScrollPhysics(),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  return ChatBubble(message: messages[index]);
+                },
+              ),
+            ),
+
+            ChatInputBar(controller: messageController, onSend: sendMessage),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatHeader extends StatelessWidget {
+  final String name;
+  final String image;
+  final VoidCallback onBackTap;
+  final VoidCallback onStatusTap;
+
+  const ChatHeader({
+    super.key,
+    required this.name,
+    required this.image,
+    required this.onBackTap,
+    required this.onStatusTap,
+  });
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
+  static const Color teal = Color(0xFF005477);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
         children: [
-          SafeArea(
-            bottom: false,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: borderColor,
-                    width: 1,
-                  ),
+          Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onBackTap,
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              Navigator.pushNamed(context, '/message');
-                            },
-                            child: const SizedBox(
-                              width: 32,
-                              height: 32,
-                              child: Center(
-                                child: Text(
-                                  '←',
-                                  style: TextStyle(
-                                    color: navy,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: SizedBox(
-                            width: 26,
-                            height: 40,
-                            child: Image.asset(
-                              'assets/images/helper.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: const Color(0xFFE1E2E6),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: navy,
-                                    size: 20,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Bronny James',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: navy,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Active Now • Professional Steward',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: grayText,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Material(
-                    color: navy,
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () {
-                        Navigator.pushNamed(context, '/live-tracking');
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        child: Text(
-                          'Live Tracking',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: navy,
+                  size: 18,
+                ),
               ),
             ),
           ),
 
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 20,
+          const SizedBox(width: 12),
+
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(17),
+                child: Image.asset(
+                  image,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 44,
+                      height: 44,
+                      color: navy.withOpacity(0.10),
+                      child: const Icon(Icons.person_rounded, color: navy),
+                    );
+                  },
+                ),
               ),
+              Positioned(
+                right: -1,
+                bottom: -1,
+                child: Container(
+                  width: 13,
+                  height: 13,
+                  decoration: BoxDecoration(
+                    color: teal,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(width: 11),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: lightPanel,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Today',
-                      style: TextStyle(
-                        color: grayText,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: navy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                ...messages.map(
-                  (message) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: ChatBubble(message: message),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 280),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD8DADD).withOpacity(0.30),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Your connection is secured with end-to-end encryption by Steward Safety Protocol.',
-                      textAlign: TextAlign.left,
-                      style: TextStyle(
-                        color: secureText,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
-                    ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Requester • Active now',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: mutedText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
 
-          SafeArea(
-            top: false,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
+          Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onStatusTap,
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_outlined,
+                  color: navy,
+                  size: 22,
+                ),
               ),
-              child: Row(
-                children: [
-                  Material(
-                    color: lightPanel,
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () {},
-                      child: const SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Icon(
-                          Icons.add,
-                          color: navy,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Message Bronny...',
-                        filled: true,
-                        fillColor: lightPanel,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(999),
-                          borderSide: BorderSide.none,
-                        ),
-                        hintStyle: const TextStyle(
-                          color: grayText,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Material(
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TaskContextCard extends StatelessWidget {
+  final String task;
+  final String status;
+
+  const TaskContextCard({super.key, required this.task, required this.status});
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005477);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
+
+  @override
+  Widget build(BuildContext context) {
+    final bool completed = status.toLowerCase() == 'completed';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(18, 4, 18, 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: navy.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.local_shipping_outlined,
+              color: navy,
+              size: 21,
+            ),
+          ),
+
+          const SizedBox(width: 11),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     color: navy,
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () {},
-                      child: const SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Icon(
-                          Icons.send,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
                   ),
-                ],
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Coordinate pickup, changes, and delivery updates.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: mutedText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: teal.withOpacity(completed ? 0.06 : 0.10),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              completed ? 'Done' : 'Active',
+              style: const TextStyle(
+                color: teal,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
@@ -313,82 +359,55 @@ class CoordinationChatPage extends StatelessWidget {
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
 
-  const ChatBubble({
-    super.key,
-    required this.message,
-  });
+  const ChatBubble({super.key, required this.message});
 
   static const Color navy = Color(0xFF003C56);
-  static const Color green = Color(0xFF004035);
-  static const Color grayText = Color(0xFF536167);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
 
   @override
   Widget build(BuildContext context) {
-    final bool isRight = message.side == ChatSide.right;
+    final bool isMine = message.isMine;
 
     return Align(
-      alignment: isRight ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
         child: Column(
-          crossAxisAlignment:
-              isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMine
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
-            if (message.tag != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4EF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  message.tag!,
-                  style: const TextStyle(
-                    color: green,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-            ],
             Container(
-              padding: const EdgeInsets.all(14),
+              constraints: const BoxConstraints(maxWidth: 286),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
-                color: isRight ? navy : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: isRight
-                    ? null
-                    : const Border(
-                        left: BorderSide(
-                          color: navy,
-                          width: 4,
-                        ),
-                      ),
+                color: isMine ? navy : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isMine ? 18 : 4),
+                  bottomRight: Radius.circular(isMine ? 4 : 18),
+                ),
+                border: isMine ? null : Border.all(color: borderColor),
               ),
               child: Text(
                 message.text,
                 style: TextStyle(
-                  color: isRight ? Colors.white : Colors.black,
-                  fontSize: 16,
-                  height: 1.5,
+                  color: isMine ? Colors.white : navy,
+                  fontSize: 12.5,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                message.time,
-                style: const TextStyle(
-                  color: grayText,
-                  fontSize: 10,
-                ),
+            const SizedBox(height: 4),
+            Text(
+              message.time,
+              style: const TextStyle(
+                color: mutedText,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -398,21 +417,107 @@ class ChatBubble extends StatelessWidget {
   }
 }
 
-class ChatMessage {
-  final ChatSide side;
-  final String text;
-  final String time;
-  final String? tag;
+class ChatInputBar extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onSend;
 
-  const ChatMessage({
-    required this.side,
-    required this.text,
-    required this.time,
-    this.tag,
+  const ChatInputBar({
+    super.key,
+    required this.controller,
+    required this.onSend,
   });
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+      child: Row(
+        children: [
+          Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: () {},
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor),
+                ),
+                child: const Icon(Icons.add_rounded, color: navy, size: 24),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: borderColor),
+              ),
+              child: TextField(
+                controller: controller,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => onSend(),
+                style: const TextStyle(
+                  color: navy,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: TextStyle(
+                    color: mutedText,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          Material(
+            color: navy,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onSend,
+              customBorder: const CircleBorder(),
+              child: const SizedBox(
+                width: 46,
+                height: 46,
+                child: Icon(Icons.send_rounded, color: Colors.white, size: 21),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-enum ChatSide {
-  left,
-  right,
+class ChatMessage {
+  final String text;
+  final String time;
+  final bool isMine;
+
+  const ChatMessage({
+    required this.text,
+    required this.time,
+    required this.isMine,
+  });
 }

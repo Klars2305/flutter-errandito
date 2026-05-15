@@ -40,10 +40,7 @@ class LiveTrackingPage extends StatelessWidget {
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: const Color(0xFFD6E5EC),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: navy,
-                                ),
+                                child: const Icon(Icons.person, color: navy),
                               );
                             },
                           ),
@@ -103,10 +100,7 @@ class LiveTrackingPage extends StatelessWidget {
                           const SizedBox(height: 4),
                           const Text(
                             'Order #ST-9402 • Grocery Concierge',
-                            style: TextStyle(
-                              color: bodyText,
-                              fontSize: 14,
-                            ),
+                            style: TextStyle(color: bodyText, fontSize: 14),
                           ),
                           const SizedBox(height: 12),
                           Container(
@@ -136,8 +130,9 @@ class LiveTrackingPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(32),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      const Color(0xFF191C1E).withOpacity(0.06),
+                                  color: const Color(
+                                    0xFF191C1E,
+                                  ).withOpacity(0.06),
                                   blurRadius: 48,
                                   offset: const Offset(0, 24),
                                 ),
@@ -178,28 +173,27 @@ class LiveTrackingPage extends StatelessWidget {
                                     child: Row(
                                       children: [
                                         ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           child: SizedBox(
                                             width: 46,
                                             height: 48,
                                             child: Image.asset(
                                               'assets/images/helper.png',
                                               fit: BoxFit.cover,
-                                              errorBuilder: (
-                                                context,
-                                                error,
-                                                stackTrace,
-                                              ) {
-                                                return Container(
-                                                  color:
-                                                      const Color(0xFFD6E5EC),
-                                                  child: const Icon(
-                                                    Icons.person,
-                                                    color: navy,
-                                                  ),
-                                                );
-                                              },
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                    return Container(
+                                                      color: const Color(
+                                                        0xFFD6E5EC,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.person,
+                                                        color: navy,
+                                                      ),
+                                                    );
+                                                  },
                                             ),
                                           ),
                                         ),
@@ -329,10 +323,7 @@ class LiveTrackingPage extends StatelessWidget {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [
-                                    navy,
-                                    teal,
-                                  ],
+                                  colors: [navy, teal],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
@@ -436,10 +427,7 @@ class JourneyStep extends StatelessWidget {
 class ActivityNote extends StatelessWidget {
   final String text;
 
-  const ActivityNote({
-    super.key,
-    required this.text,
-  });
+  const ActivityNote({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -465,10 +453,7 @@ class ActivityNote extends StatelessWidget {
 class RequesterBottomNav extends StatelessWidget {
   final String active;
 
-  const RequesterBottomNav({
-    super.key,
-    required this.active,
-  });
+  const RequesterBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
   static const Color inactive = Color(0xFF94A3B8);
@@ -480,9 +465,7 @@ class RequesterBottomNav extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.80),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF191C1E).withOpacity(0.04),
@@ -525,10 +508,12 @@ class RequesterBottomNav extends StatelessWidget {
           ),
           Expanded(
             child: NavItem(
-              icon: Icons.receipt_long_outlined,
-              label: 'Tasks',
-              isActive: active == 'tasks',
-              onTap: () {},
+              icon: Icons.assignment_outlined,
+              label: 'Activity',
+              isActive: active == 'activity',
+              onTap: () {
+                Navigator.pushReplacementNamed(context, '/activity');
+              },
             ),
           ),
           Expanded(
@@ -575,18 +560,11 @@ class NavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  icon,
-                  color: isActive ? Colors.white : inactive,
-                  size: 22,
-                ),
+                Icon(icon, color: isActive ? Colors.white : inactive, size: 22),
                 const SizedBox(height: 6),
                 Text(
                   label,

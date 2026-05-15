@@ -33,7 +33,7 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
       return;
     }
 
-    Navigator.pushNamed(context, '/account-created');
+    Navigator.pushNamed(context, '/identity');
 
     // Later, when role selection is ready:
     // Navigator.pushNamed(context, '/role-selection');

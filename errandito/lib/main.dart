@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'account_created.dart';
 import 'activity_planner.dart';
 import 'booking_details.dart';
@@ -13,7 +14,7 @@ import 'home_dashboard_page.dart';
 import 'identity_verification_page.dart';
 import 'live_tracking_page.dart';
 import 'login_screen_page.dart';
-import 'messages_page.dart';
+import 'messages_page.dart' as messages;
 import 'onboarding_walkthrough_page.dart';
 import 'payment_earnings_page.dart';
 import 'payment_secured_page.dart';
@@ -42,38 +43,99 @@ class ErrandditoApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
+        // Splash / Start
         '/': (context) => const AestheticSplashScreen(),
+        '/splash': (context) => const AestheticSplashScreen(),
+
+        // Onboarding / Authentication
         '/onboarding': (context) => const OnboardingWalkthroughPage(),
-        '/choose': (context) => const ChoosePage(),
         '/login': (context) => const LoginScreenPage(),
+        '/signin': (context) => const LoginScreenPage(),
         '/signup': (context) => const SignUpScreenPage(),
-        '/identity': (context) => const IdentityVerificationPage(),
+        '/sign-up': (context) => const SignUpScreenPage(),
+
+        // Role / Verification
+        '/choose': (context) => const ChoosePage(),
+        '/role-selection': (context) => const ChoosePage(),
+
+        // IMPORTANT:
+        // No const here because your IdentityVerificationPage is not const.
+        '/identity': (context) => IdentityVerificationPage(),
+        '/identity-verification': (context) => IdentityVerificationPage(),
+        '/verification': (context) => IdentityVerificationPage(),
+
+        // Account / Profile
         '/create-account': (context) => const HomeDashboardPage(),
         '/account-created': (context) => const AccountCreatedPage(),
         '/profile': (context) => const AccountCreatedPage(),
+        '/account': (context) => const AccountCreatedPage(),
+
+        // Requester Home
+        '/home': (context) => const HomeDashboardPage(),
         '/home-dashboard': (context) => const HomeDashboardPage(),
+        '/requester-home': (context) => const HomeDashboardPage(),
+        '/requester-dashboard': (context) => const HomeDashboardPage(),
+
+        // Requester Flow
         '/servicehub': (context) => const BookingDetailsPage(),
         '/bookingdetails': (context) => const BookingDetailsPage(),
+        '/booking-details': (context) => const BookingDetailsPage(),
+        '/task-details': (context) => const BookingDetailsPage(),
+
         '/select-helper': (context) => const SelectHelperPage(),
         '/reviewpay': (context) => const ReviewPayPage(),
+        '/review-pay': (context) => const ReviewPayPage(),
+        '/ratings': (context) => const ReviewPayPage(),
+        '/review': (context) => const ReviewPayPage(),
+
         '/payment': (context) => const PaymentSecuredPage(),
+        '/payment-secured': (context) => const PaymentSecuredPage(),
         '/payment-earnings': (context) => const PaymentEarningsPage(),
-        '/message': (context) => const MessagesPage(),
+
+        // Messaging
+        // IMPORTANT:
+        // Use messages.MessagesPage() because MessagesPage name conflicts
+        // with another imported file.
+        '/message': (context) => const messages.MessagesPage(),
+        '/messages': (context) => const messages.MessagesPage(),
+        '/chat': (context) => const messages.MessagesPage(),
         '/coordination': (context) => const CoordinationChatPage(),
+
+        // Tracking / Completion
         '/live-tracking': (context) => const LiveTrackingPage(),
+        '/task-tracking': (context) => const LiveTrackingPage(),
         '/task-complete': (context) => const TaskCompletePage(),
+        '/completed-task': (context) => const TaskCompletePage(),
+
+        // Runner Flow
         '/gig-finder': (context) => const GigFinderJobListingsPage(),
+        '/runner-home': (context) => const GigFinderJobListingsPage(),
+        '/runner-dashboard': (context) => const GigFinderJobListingsPage(),
+        '/available-errands': (context) => const GigFinderJobListingsPage(),
+
         '/execution-status': (context) => const ExecutionStatusUpdatePage(),
+        '/status-update': (context) => const ExecutionStatusUpdatePage(),
         '/execution-messaging': (context) => const ExecutionMessagingPage(),
+        '/task-chat': (context) => const ExecutionMessagingPage(),
         '/task-complete-earnings': (context) => const PaymentEarningsPage(),
+
+        // Post Errand / Activity
         '/activity-planner': (context) => const ActivityPlannerPage(),
-        '/activity': (context) => const ActivityPlannerPage(),
+        '/post-errand': (context) => const ActivityPlannerPage(),
+
+        // Keeping your old activity route working
+        '/activity': (context) => const LiveTrackingPage(),
+
+        // Payment / Wallet
         '/steward-wallet-budget-allocated': (context) =>
             const StewardWalletBudgetAllocatedPage(),
         '/errand-execution-payment': (context) =>
             const ErrandExecutionPaymentPage(),
+        '/payment-summary': (context) => const ErrandExecutionPaymentPage(),
         '/steward-execution-completed': (context) =>
             const ErrandExecutionPaymentPage(),
+
+        // Details
         '/grocery-pickup-details': (context) =>
             const GroceryPickupDetailsPage(),
       },
@@ -92,7 +154,6 @@ class AestheticSplashScreen extends StatelessWidget {
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
   static const Color background = Color(0xFFF8F9FD);
-  static const Color mutedText = Color(0xFF71787E);
   static const Color darkGreen = Color(0xFF004035);
 
   @override
@@ -232,7 +293,7 @@ class AestheticSplashScreen extends StatelessWidget {
                             const SizedBox(width: 16),
                             const Flexible(
                               child: Text(
-                                'Pagod ka na? erranddito na!',
+                                'Pagod ka na? Errandito na!',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: navy,
@@ -318,15 +379,15 @@ class AestheticSplashScreen extends StatelessWidget {
                                           '/onboarding',
                                         );
                                       },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(
                                           horizontal: 32,
                                           vertical: 20,
                                         ),
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
-                                          children: const [
+                                          children: [
                                             Text(
                                               'Get Started',
                                               textAlign: TextAlign.center,

@@ -1,315 +1,271 @@
 import 'package:flutter/material.dart';
 
-class IdentityVerificationPage extends StatefulWidget {
+class IdentityVerificationPage extends StatelessWidget {
   const IdentityVerificationPage({super.key});
-
-  @override
-  State<IdentityVerificationPage> createState() =>
-      _IdentityVerificationPageState();
-}
-
-class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
-  bool resent = false;
 
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
-  static const Color grayText = Color(0xFF536167);
   static const Color mutedText = Color(0xFF71787E);
-  static const Color lightPanel = Color(0xFFF2F3F7);
+  static const Color borderColor = Color(0xFFE6E9EF);
 
   @override
   Widget build(BuildContext context) {
-    final bool isSmall = MediaQuery.of(context).size.width <= 430;
-
     return Scaffold(
       backgroundColor: background,
-      body: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            top: 0,
-            right: 0,
-            child: Container(
-              height: 64,
-              color: const Color(0xFFF8FAFC).withOpacity(0.80),
-            ),
-          ),
-
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 48, 24, 220),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 672),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        'Verified Identity, Unmatched Security.',
-                        style: TextStyle(
-                          color: navy,
-                          fontSize: isSmall ? 34 : 44,
-                          fontWeight: FontWeight.w800,
-                          height: isSmall ? 1.23 : 1.22,
-                          letterSpacing: -1.1,
+                      Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: navy,
+                              size: 18,
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Stewardship begins with trust. Please enter the 6-digit code sent to your registered device to confirm your identity and access our secure community.',
-                        style: TextStyle(
-                          color: grayText,
-                          fontSize: 18,
-                          height: 1.61,
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isSmall ? 24 : 32),
-                        decoration: BoxDecoration(
-                          color: lightPanel,
-                          borderRadius: BorderRadius.circular(32),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(
-                                6,
-                                (index) => Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  child: Container(
-                                    width: isSmall ? 44 : 48,
-                                    height: 64,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          blurRadius: 2,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        '·',
-                                        style: TextStyle(
-                                          color: Color(0xFF6B7280),
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w800,
-                                          height: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            SizedBox(
-                              width: double.infinity,
-                              height: 56,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      navy,
-                                      teal,
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF191C1E)
-                                          .withOpacity(0.06),
-                                      blurRadius: 48,
-                                      offset: const Offset(0, 24),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/choose',
-                                      );
-                                    },
-                                    child: const Center(
-                                      child: Text(
-                                        'Verify Identity',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            Column(
-                              children: [
-                                const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.access_time_filled,
-                                      color: grayText,
-                                      size: 17,
-                                    ),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'RESEND CODE IN 01:58',
-                                      style: TextStyle(
-                                        color: navy,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.35,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      resent = true;
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text(
-                                    'Resend Now',
-                                    style: TextStyle(
-                                      color: navy,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.35,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Identity Verification',
+                          style: TextStyle(
+                            color: navy,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
+
+                  const SizedBox(height: 24),
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [navy, teal],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: navy.withOpacity(0.14),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.verified_user_rounded,
+                          color: Colors.white,
+                          size: 42,
+                        ),
+                        SizedBox(height: 18),
+                        Text(
+                          'Verify your ERRANDITO account',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            height: 1.15,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'This helps keep requesters and runners safe before accepting or posting errands.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            height: 1.45,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  const Text(
+                    'Verification Requirements',
+                    style: TextStyle(
+                      color: navy,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  const VerificationItem(
+                    icon: Icons.badge_outlined,
+                    title: 'Valid ID',
+                    subtitle:
+                        'Upload a school ID, government ID, or company ID.',
+                  ),
+                  const SizedBox(height: 10),
+                  const VerificationItem(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Profile Photo',
+                    subtitle: 'Use a clear photo so users can recognize you.',
+                  ),
+                  const SizedBox(height: 10),
+                  const VerificationItem(
+                    icon: Icons.phone_android_rounded,
+                    title: 'Contact Number',
+                    subtitle: 'Confirm your phone number for task updates.',
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [navy, teal],
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/home-dashboard');
+                          },
+                          child: const Center(
+                            child: Text(
+                              'Continue',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  const Center(
+                    child: Text(
+                      'You can complete detailed verification later.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: mutedText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
 
-          if (resent)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 160,
-              child: IgnorePointer(
-                child: Center(
-                  child: Text(
-                    'Code resent',
-                    style: TextStyle(
-                      color: mutedText,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+class VerificationItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const VerificationItem({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005477);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: teal.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: teal, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: navy,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-              ),
-            ),
-
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 24,
-              ),
-              color: const Color(0xFFD8DADD).withOpacity(0.40),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        Container(
-                          width: 16,
-                          height: 21,
-                          decoration: BoxDecoration(
-                            color: grayText,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        const Text(
-                          'Secure verification powered by Steward-Shield™',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: grayText,
-                            fontSize: 12,
-                            height: 1.33,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        Text(
-                          'Compliance ID: STE- 8829-X',
-                          style: TextStyle(
-                            color: grayText.withOpacity(0.60),
-                            fontSize: 12,
-                            height: 1.33,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                        Text(
-                          '© 2024 The Steward Service',
-                          style: TextStyle(
-                            color: grayText.withOpacity(0.60),
-                            fontSize: 12,
-                            height: 1.33,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: mutedText,
+                    fontSize: 11.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],

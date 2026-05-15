@@ -22,7 +22,7 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
   static const Color divider = Color(0xFFE1E2E6);
 
   void signIn() {
-    Navigator.pushNamed(context, '/account-created');
+    Navigator.pushNamed(context, '/choose');
 
     // Later, when role selection is ready:
     // Navigator.pushNamed(context, '/role-selection');

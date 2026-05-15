@@ -124,68 +124,6 @@ class ChoosePage extends StatelessWidget {
                                       },
                                     ),
                                     const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Container(
-                                            height: 1,
-                                            color: mutedText.withOpacity(0.10),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        const Text(
-                                          'Existing User?',
-                                          style: TextStyle(
-                                            color: mutedText,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 2,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Container(
-                                            height: 1,
-                                            color: mutedText.withOpacity(0.10),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(12),
-                                        onTap: () {
-                                          Navigator.pushNamed(context, '/login');
-                                        },
-                                        child: const Padding(
-                                          padding:
-                                              EdgeInsets.symmetric(vertical: 4),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.login,
-                                                color: teal,
-                                                size: 16,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                'Sign in to your account',
-                                                style: TextStyle(
-                                                  color: teal,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w800,
-                                                  height: 1.42,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -259,7 +197,7 @@ class ChoosePage extends StatelessWidget {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
                           onTap: () {
-                            Navigator.pushNamed(context, '/onboarding');
+                            Navigator.pop(context);
                           },
                           child: const SizedBox(
                             width: 32,
