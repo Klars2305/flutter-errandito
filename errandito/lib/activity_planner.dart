@@ -91,7 +91,9 @@ class ActivityPlannerPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0C2D3F).withOpacity(0.08),
+                          color: const Color(
+                            0xFF0C2D3F,
+                          ).withValues(alpha: 0.08),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
@@ -174,7 +176,9 @@ class ActivityPlannerPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0C2D3F).withOpacity(0.08),
+                          color: const Color(
+                            0xFF0C2D3F,
+                          ).withValues(alpha: 0.08),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
@@ -412,11 +416,11 @@ class RunnerBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.96),
+          color: Colors.white.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),

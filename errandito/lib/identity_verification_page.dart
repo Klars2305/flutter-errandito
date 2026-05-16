@@ -76,7 +76,7 @@ class IdentityVerificationPage extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: navy.withOpacity(0.14),
+                          color: navy.withValues(alpha: 0.14),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
@@ -237,7 +237,7 @@ class VerificationItem extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: teal.withOpacity(0.10),
+              color: teal.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Icon(icon, color: teal, size: 22),

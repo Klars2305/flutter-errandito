@@ -21,10 +21,7 @@ class TaskCompletePage extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -71,10 +68,7 @@ class TaskCompletePage extends StatelessWidget {
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
                             color: const Color(0xFFD6E5EC),
-                            child: const Icon(
-                              Icons.person,
-                              color: navy,
-                            ),
+                            child: const Icon(Icons.person, color: navy),
                           );
                         },
                       ),
@@ -141,7 +135,7 @@ class TaskCompletePage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: darkText.withOpacity(0.04),
+                                color: darkText.withValues(alpha: 0.04),
                                 blurRadius: 48,
                                 offset: const Offset(0, 24),
                               ),
@@ -222,14 +216,14 @@ class TaskCompletePage extends StatelessWidget {
                                         fit: BoxFit.cover,
                                         errorBuilder:
                                             (context, error, stackTrace) {
-                                          return Container(
-                                            color: const Color(0xFFD6E5EC),
-                                            child: const Icon(
-                                              Icons.person,
-                                              color: navy,
-                                            ),
-                                          );
-                                        },
+                                              return Container(
+                                                color: const Color(0xFFD6E5EC),
+                                                child: const Icon(
+                                                  Icons.person,
+                                                  color: navy,
+                                                ),
+                                              );
+                                            },
                                       ),
                                     ),
                                   ),
@@ -334,10 +328,7 @@ class TaskCompletePage extends StatelessWidget {
                                     gradient: const LinearGradient(
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
-                                      colors: [
-                                        navy,
-                                        teal,
-                                      ],
+                                      colors: [navy, teal],
                                     ),
                                   ),
                                   child: Material(

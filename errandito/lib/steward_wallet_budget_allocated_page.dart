@@ -52,7 +52,7 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
                     horizontal: 16,
                     vertical: 14,
                   ),
-                  color: const Color(0xFFF8FAFC).withOpacity(0.90),
+                  color: const Color(0xFFF8FAFC).withValues(alpha: 0.90),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -141,8 +141,9 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      const Color(0xFF191C1E).withOpacity(0.06),
+                                  color: const Color(
+                                    0xFF191C1E,
+                                  ).withValues(alpha: 0.06),
                                   blurRadius: 32,
                                   offset: const Offset(0, 16),
                                 ),
@@ -222,7 +223,7 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: navy.withOpacity(0.12),
+                                  color: navy.withValues(alpha: 0.12),
                                   blurRadius: 32,
                                   offset: const Offset(0, 16),
                                 ),
@@ -238,7 +239,9 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
                                     Text(
                                       'VERIFICATION',
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.75),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.75,
+                                        ),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.72,
@@ -287,7 +290,7 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
                                 Text(
                                   'Premium options available',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.70),
+                                    color: Colors.white.withValues(alpha: 0.70),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.4,
@@ -390,10 +393,7 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
 class HistoryItem extends StatelessWidget {
   final ActivityItem activity;
 
-  const HistoryItem({
-    super.key,
-    required this.activity,
-  });
+  const HistoryItem({super.key, required this.activity});
 
   static const Color darkText = Color(0xFF191C1E);
   static const Color bodyText = Color(0xFF40484E);
@@ -452,10 +452,7 @@ class HistoryItem extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
                   color: isNegative
                       ? const Color(0xFFF3D7D7)
@@ -497,18 +494,12 @@ class ActivityItem {
   });
 }
 
-enum ActivityTone {
-  positive,
-  negative,
-}
+enum ActivityTone { positive, negative }
 
 class RunnerBottomNav extends StatelessWidget {
   final String active;
 
-  const RunnerBottomNav({
-    super.key,
-    required this.active,
-  });
+  const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
   static const Color muted = Color(0xFF71787E);
@@ -522,7 +513,7 @@ class RunnerBottomNav extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -8),
           ),
@@ -604,11 +595,7 @@ class BottomNavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 22,
-            ),
+            Icon(icon, color: color, size: 22),
             const SizedBox(height: 4),
             Text(
               label,

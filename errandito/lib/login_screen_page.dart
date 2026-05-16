@@ -35,13 +35,10 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
   bool isLoading = false;
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
   static const Color darkText = Color(0xFF191C1E);
   static const Color softText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE0E4EA);
-  static const Color divider = Color(0xFFE1E2E6);
 
-Future<void> signIn() async {
+  Future<void> signIn() async {
     final String email = emailController.text.trim();
     final String password = passwordController.text;
 
@@ -88,9 +85,8 @@ Future<void> signIn() async {
   void goToSignUp() {
     Navigator.pushNamed(context, '/signup');
   }
-  
 
- Future<void> forgotPassword() async {
+  Future<void> forgotPassword() async {
     final String email = emailController.text.trim();
 
     if (email.isEmpty) {
@@ -189,7 +185,7 @@ Future<void> signIn() async {
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: darkText.withOpacity(0.045),
+                              color: darkText.withValues(alpha: 0.045),
                               blurRadius: 28,
                               offset: const Offset(0, 14),
                             ),
@@ -302,7 +298,7 @@ Future<void> signIn() async {
 
                             SizedBox(height: veryShortScreen ? 8 : 10),
 
-                           GradientMainButton(
+                            GradientMainButton(
                               label: isLoading ? 'Signing In...' : 'Sign In',
                               height: buttonHeight,
                               onTap: isLoading ? () {} : signIn,
@@ -461,7 +457,7 @@ class GradientMainButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: navy.withOpacity(0.12),
+              color: navy.withValues(alpha: 0.12),
               blurRadius: 14,
               offset: const Offset(0, 7),
             ),

@@ -1,11 +1,160 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-class ExecutionStatusUpdatePage extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'services/errand_service.dart';
+
+class ExecutionStatusUpdatePage extends StatefulWidget {
   const ExecutionStatusUpdatePage({super.key});
 
+  @override
+  State<ExecutionStatusUpdatePage> createState() =>
+      _ExecutionStatusUpdatePageState();
+}
+
+class _ExecutionStatusUpdatePageState extends State<ExecutionStatusUpdatePage> {
   static const Color background = Color(0xFFF8F9FD);
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
+
+  StreamSubscription<Position>? _positionSub;
+  String? _trackingErrandId;
+  bool _readRouteArguments = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_readRouteArguments) return;
+    _readRouteArguments = true;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String && args.isNotEmpty) {
+      _trackingErrandId = args;
+    }
+  }
+
+  Future<bool> _ensureLocationPermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    return permission != LocationPermission.denied &&
+        permission != LocationPermission.deniedForever;
+  }
+
+  Future<void> _startLiveTracking(String errandId) async {
+    _trackingErrandId = errandId;
+    final allowed = await _ensureLocationPermission();
+
+    if (!allowed) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Location permission is required for live tracking.'),
+        ),
+      );
+      return;
+    }
+
+    _positionSub?.cancel();
+    _positionSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      ),
+    ).listen((position) {
+      final activeErrandId = _trackingErrandId;
+      if (activeErrandId == null) return;
+
+      ErrandService.updateRunnerLocation(
+        errandId: activeErrandId,
+        lat: position.latitude,
+        lng: position.longitude,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
+  }
+
+  Widget _buildTaskBody() {
+    final errandId = _trackingErrandId;
+
+    if (errandId != null && errandId.isNotEmpty) {
+      return StreamBuilder(
+        stream: ErrandService.errandStream(errandId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const _ExecutionLoadingCard();
+          }
+
+          if (snapshot.hasError) {
+            return _ExecutionMessageCard(
+              icon: Icons.error_outline_rounded,
+              title: 'Unable to load task',
+              message: snapshot.error.toString(),
+            );
+          }
+
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const _ExecutionMessageCard(
+              icon: Icons.assignment_late_outlined,
+              title: 'Task not found',
+              message: 'This accepted task may have been removed or changed.',
+            );
+          }
+
+          final data = snapshot.data!.data() ?? <String, dynamic>{};
+          return _ExecutionTaskContent(
+            errandId: errandId,
+            data: data,
+            onStartTracking: () => _startLiveTracking(errandId),
+          );
+        },
+      );
+    }
+
+    return StreamBuilder(
+      stream: ErrandService.activeRunnerErrandsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _ExecutionLoadingCard();
+        }
+
+        if (snapshot.hasError) {
+          return _ExecutionMessageCard(
+            icon: Icons.error_outline_rounded,
+            title: 'Unable to load active task',
+            message: snapshot.error.toString(),
+          );
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const _ExecutionMessageCard(
+            icon: Icons.assignment_outlined,
+            title: 'No active task',
+            message:
+                'Accept a task first. Your current task progress will appear here.',
+          );
+        }
+
+        final doc = docs.first;
+        final data = doc.data();
+        return _ExecutionTaskContent(
+          errandId: doc.id,
+          data: data,
+          onStartTracking: () => _startLiveTracking(doc.id),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,44 +189,135 @@ class ExecutionStatusUpdatePage extends StatelessWidget {
                           Navigator.pushNamed(context, '/profile');
                         },
                       ),
-
                       const SizedBox(height: 18),
-
-                      const CurrentErrandSummaryCard(),
-
-                      const SizedBox(height: 18),
-
-                      const StatusProgressCard(),
-
-                      const SizedBox(height: 18),
-
-                      const TaskRouteCard(),
-
-                      const SizedBox(height: 18),
-
-                      TaskActionCard(
-                        onChatTap: () {
-                          Navigator.pushNamed(context, '/execution-messaging');
-                        },
-                        onCompleteTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/task-complete-earnings',
-                          );
-                        },
-                      ),
+                      _buildTaskBody(),
                     ],
                   ),
                 ),
               ),
             ),
-
             const Align(
               alignment: Alignment.bottomCenter,
               child: RunnerBottomNav(active: 'tasks'),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ExecutionTaskContent extends StatelessWidget {
+  final String errandId;
+  final Map<String, dynamic> data;
+  final VoidCallback onStartTracking;
+
+  const _ExecutionTaskContent({
+    required this.errandId,
+    required this.data,
+    required this.onStartTracking,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = (data['status'] ?? 'accepted').toString();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CurrentErrandSummaryCard(data: data),
+        const SizedBox(height: 18),
+        StatusProgressCard(
+          errandId: errandId,
+          status: status,
+          onStartTracking: onStartTracking,
+        ),
+        const SizedBox(height: 18),
+        TaskRouteCard(data: data),
+        const SizedBox(height: 18),
+        TaskActionCard(
+          onChatTap: () {
+            Navigator.pushNamed(
+              context,
+              '/execution-messaging',
+              arguments: errandId,
+            );
+          },
+          onCompleteTap: status == 'completed'
+              ? null
+              : () async {
+                  await ErrandService.updateErrandProgress(
+                    errandId: errandId,
+                    status: 'completed',
+                  );
+
+                  if (!context.mounted) return;
+                  Navigator.pushNamed(context, '/task-complete-earnings');
+                },
+        ),
+      ],
+    );
+  }
+}
+
+class _ExecutionLoadingCard extends StatelessWidget {
+  const _ExecutionLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const StatusCard(
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(color: Color(0xFF003C56)),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExecutionMessageCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const _ExecutionMessageCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color mutedText = Color(0xFF71787E);
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusCard(
+      child: Column(
+        children: [
+          Icon(icon, color: navy, size: 42),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: navy,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: mutedText,
+              fontSize: 13,
+              height: 1.35,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -122,9 +362,7 @@ class StatusHeader extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(width: 12),
-
         const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,9 +392,7 @@ class StatusHeader extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(width: 10),
-
         InkWell(
           onTap: onProfileTap,
           borderRadius: BorderRadius.circular(18),
@@ -172,7 +408,7 @@ class StatusHeader extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: navy.withOpacity(0.10),
+                    color: navy.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Icon(
@@ -191,15 +427,37 @@ class StatusHeader extends StatelessWidget {
 }
 
 class CurrentErrandSummaryCard extends StatelessWidget {
-  const CurrentErrandSummaryCard({super.key});
+  final Map<String, dynamic> data;
+
+  const CurrentErrandSummaryCard({super.key, required this.data});
 
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
   static const Color mutedText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE6E9EF);
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'accepted':
+        return 'Accepted';
+      case 'in_progress':
+        return 'In Progress';
+      case 'on_the_way':
+        return 'On the Way';
+      case 'completed':
+        return 'Completed';
+      default:
+        return status.replaceAll('_', ' ');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final serviceType =
+        (data['serviceType'] ?? data['title'] ?? 'Accepted Errand').toString();
+    final requester = (data['requesterName'] ?? 'Requester').toString();
+    final budget = (data['budget'] ?? data['pay'] ?? '₱0').toString();
+    final status = (data['status'] ?? 'accepted').toString();
+
     return StatusCard(
       child: Row(
         children: [
@@ -207,7 +465,7 @@ class CurrentErrandSummaryCard extends StatelessWidget {
             width: 54,
             height: 54,
             decoration: BoxDecoration(
-              color: navy.withOpacity(0.08),
+              color: navy.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(17),
             ),
             child: const Icon(
@@ -216,30 +474,28 @@ class CurrentErrandSummaryCard extends StatelessWidget {
               size: 25,
             ),
           ),
-
           const SizedBox(width: 13),
-
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Courier Parcel Pickup',
+                  serviceType,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: navy,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.2,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Requester: Ella Cruz',
+                  'Requester: $requester',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: mutedText,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
@@ -248,15 +504,13 @@ class CurrentErrandSummaryCard extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(width: 10),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text(
-                '₱90',
-                style: TextStyle(
+              Text(
+                budget,
+                style: const TextStyle(
                   color: navy,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
@@ -266,12 +520,12 @@ class CurrentErrandSummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  color: teal.withOpacity(0.10),
+                  color: teal.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Text(
-                  'In Progress',
-                  style: TextStyle(
+                child: Text(
+                  _statusLabel(status),
+                  style: const TextStyle(
                     color: teal,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -287,7 +541,21 @@ class CurrentErrandSummaryCard extends StatelessWidget {
 }
 
 class StatusProgressCard extends StatelessWidget {
-  const StatusProgressCard({super.key});
+  final String errandId;
+  final String status;
+  final VoidCallback onStartTracking;
+
+  const StatusProgressCard({
+    super.key,
+    required this.errandId,
+    required this.status,
+    required this.onStartTracking,
+  });
+
+  bool get isAccepted => status == 'accepted';
+  bool get isInProgress => status == 'in_progress';
+  bool get isOnTheWay => status == 'on_the_way';
+  bool get isCompleted => status == 'completed';
 
   @override
   Widget build(BuildContext context) {
@@ -299,30 +567,57 @@ class StatusProgressCard extends StatelessWidget {
             title: 'Task Progress',
             subtitle: 'Keep the requester updated as you complete the errand.',
           ),
-
           const SizedBox(height: 16),
-
-          const StatusTimeline(),
-
+          StatusTimeline(status: status),
           const SizedBox(height: 16),
-
           Row(
             children: [
               Expanded(
                 child: SecondaryActionButton(
-                  label: 'Set On the Way',
-                  icon: Icons.delivery_dining_rounded,
-                  onTap: () {},
+                  label: isAccepted ? 'Start Task' : 'Started',
+                  icon: Icons.play_arrow_rounded,
+                  onTap: isAccepted
+                      ? () async {
+                          await ErrandService.updateErrandProgress(
+                            errandId: errandId,
+                            status: 'in_progress',
+                          );
+                          onStartTracking();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Task started. Live tracking is active.',
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: PrimaryActionButton(
-                  label: 'Delivered',
-                  icon: Icons.check_rounded,
-                  onTap: () {
-                    Navigator.pushNamed(context, '/task-complete-earnings');
-                  },
+                  label: isOnTheWay || isCompleted
+                      ? 'On the Way'
+                      : 'Set On the Way',
+                  icon: Icons.delivery_dining_rounded,
+                  onTap: isInProgress
+                      ? () async {
+                          await ErrandService.updateErrandProgress(
+                            errandId: errandId,
+                            status: 'on_the_way',
+                          );
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Requester updated: runner is on the way.',
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
                 ),
               ),
             ],
@@ -334,33 +629,50 @@ class StatusProgressCard extends StatelessWidget {
 }
 
 class StatusTimeline extends StatelessWidget {
-  const StatusTimeline({super.key});
+  final String status;
 
-  static const List<StatusStepData> steps = [
-    StatusStepData(
-      title: 'Accepted',
-      subtitle: 'You accepted this errand.',
-      isDone: true,
-    ),
-    StatusStepData(
-      title: 'In Progress',
-      subtitle: 'You are handling the task.',
-      isDone: true,
-    ),
-    StatusStepData(
-      title: 'On the Way',
-      subtitle: 'Going to the drop-off location.',
-      isDone: false,
-    ),
-    StatusStepData(
-      title: 'Delivered',
-      subtitle: 'Ready to complete the task.',
-      isDone: false,
-    ),
-  ];
+  const StatusTimeline({super.key, required this.status});
+
+  int get currentIndex {
+    switch (status) {
+      case 'accepted':
+        return 0;
+      case 'in_progress':
+        return 1;
+      case 'on_the_way':
+        return 2;
+      case 'completed':
+        return 3;
+      default:
+        return 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final steps = [
+      StatusStepData(
+        title: 'Accepted',
+        subtitle: 'You accepted this errand.',
+        isDone: currentIndex >= 0,
+      ),
+      StatusStepData(
+        title: 'In Progress',
+        subtitle: 'You are handling the task.',
+        isDone: currentIndex >= 1,
+      ),
+      StatusStepData(
+        title: 'On the Way',
+        subtitle: 'Going to the drop-off location.',
+        isDone: currentIndex >= 2,
+      ),
+      StatusStepData(
+        title: 'Delivered',
+        subtitle: 'Task completed.',
+        isDone: currentIndex >= 3,
+      ),
+    ];
+
     return Column(
       children: steps
           .asMap()
@@ -419,13 +731,11 @@ class StatusTimelineItem extends StatelessWidget {
               Container(
                 width: 2,
                 height: 34,
-                color: step.isDone ? teal.withOpacity(0.35) : borderColor,
+                color: step.isDone ? teal.withValues(alpha: 0.35) : borderColor,
               ),
           ],
         ),
-
         const SizedBox(width: 12),
-
         Expanded(
           child: Padding(
             padding: EdgeInsets.only(bottom: isLast ? 0 : 18),
@@ -460,35 +770,60 @@ class StatusTimelineItem extends StatelessWidget {
 }
 
 class TaskRouteCard extends StatelessWidget {
-  const TaskRouteCard({super.key});
+  final Map<String, dynamic> data;
+
+  const TaskRouteCard({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    return const StatusCard(
+    final pickup =
+        (data['pickup'] ?? data['serviceAddress'] ?? 'No pickup location')
+            .toString();
+    final dropoff =
+        (data['dropoff'] ?? data['serviceAddress'] ?? 'No drop-off location')
+            .toString();
+    final instructions =
+        (data['instructions'] ?? 'No special instructions.').toString();
+    final date = (data['preferredDate'] ?? 'No date set').toString();
+    final time = (data['timeSlot'] ?? 'No time slot set').toString();
+
+    return StatusCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle(
+          const SectionTitle(
             title: 'Route Details',
             subtitle: 'Confirm pickup and drop-off before completing.',
           ),
-          SizedBox(height: 14),
+          const SizedBox(height: 14),
           RouteInfoRow(
             icon: Icons.storefront_outlined,
             label: 'Pickup',
-            value: 'JRS Panabo',
+            value: pickup,
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           RouteInfoRow(
             icon: Icons.location_on_outlined,
             label: 'Drop-off',
-            value: 'DNSC Dormitory',
+            value: dropoff,
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
+          RouteInfoRow(
+            icon: Icons.calendar_month_rounded,
+            label: 'Date',
+            value: date,
+          ),
+          const SizedBox(height: 10),
+          RouteInfoRow(
+            icon: Icons.schedule_rounded,
+            label: 'Time',
+            value: time,
+          ),
+          const SizedBox(height: 10),
           RouteInfoRow(
             icon: Icons.note_alt_outlined,
             label: 'Note',
-            value: 'Bring valid ID. COD parcel already paid.',
+            value: instructions,
           ),
         ],
       ),
@@ -548,7 +883,7 @@ class RouteInfoRow extends StatelessWidget {
 
 class TaskActionCard extends StatelessWidget {
   final VoidCallback onChatTap;
-  final VoidCallback onCompleteTap;
+  final VoidCallback? onCompleteTap;
 
   const TaskActionCard({
     super.key,
@@ -569,9 +904,7 @@ class TaskActionCard extends StatelessWidget {
             title: 'Need to coordinate?',
             subtitle: 'Message the requester if pickup or delivery changes.',
           ),
-
           const SizedBox(height: 14),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(13),
@@ -598,9 +931,7 @@ class TaskActionCard extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 14),
-
           Row(
             children: [
               Expanded(
@@ -613,7 +944,7 @@ class TaskActionCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: PrimaryActionButton(
-                  label: 'Complete',
+                  label: onCompleteTap == null ? 'Completed' : 'Complete',
                   icon: Icons.check_circle_outline_rounded,
                   onTap: onCompleteTap,
                 ),
@@ -644,7 +975,7 @@ class StatusCard extends StatelessWidget {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.025),
+            color: Colors.black.withValues(alpha: 0.025),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -696,7 +1027,7 @@ class SectionTitle extends StatelessWidget {
 class PrimaryActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const PrimaryActionButton({
     super.key,
@@ -707,19 +1038,25 @@ class PrimaryActionButton extends StatelessWidget {
 
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
+  static const Color disabled = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = onTap == null;
+
     return SizedBox(
       height: 44,
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          gradient: const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [navy, teal],
-          ),
+          gradient: isDisabled
+              ? null
+              : const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [navy, teal],
+                ),
+          color: isDisabled ? disabled : null,
         ),
         child: Material(
           color: Colors.transparent,
@@ -751,7 +1088,7 @@ class PrimaryActionButton extends StatelessWidget {
 class SecondaryActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const SecondaryActionButton({
     super.key,
@@ -762,13 +1099,16 @@ class SecondaryActionButton extends StatelessWidget {
 
   static const Color navy = Color(0xFF003C56);
   static const Color borderColor = Color(0xFFE6E9EF);
+  static const Color mutedText = Color(0xFF71787E);
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = onTap == null;
+
     return SizedBox(
       height: 44,
       child: Material(
-        color: Colors.white,
+        color: isDisabled ? const Color(0xFFF1F5F9) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -781,12 +1121,12 @@ class SecondaryActionButton extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: navy, size: 17),
+                Icon(icon, color: isDisabled ? mutedText : navy, size: 17),
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: navy,
+                  style: TextStyle(
+                    color: isDisabled ? mutedText : navy,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w900,
                   ),
@@ -829,11 +1169,11 @@ class RunnerBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.96),
+          color: Colors.white.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
@@ -858,7 +1198,9 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.search_rounded,
                 label: 'Gigs',
                 isActive: active == 'gigs',
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushNamed(context, '/gig-finder');
+                },
               ),
             ),
             Expanded(

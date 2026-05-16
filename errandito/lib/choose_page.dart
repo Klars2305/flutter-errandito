@@ -9,7 +9,6 @@ class ChoosePage extends StatefulWidget {
 }
 
 class _ChoosePageState extends State<ChoosePage> {
-
   static const Color backgroundTop = Color(0xFFF8FBFC);
   static const Color backgroundBottom = Color(0xFFEFF5F7);
   static const Color navy = Color(0xFF003C56);
@@ -18,7 +17,7 @@ class _ChoosePageState extends State<ChoosePage> {
   static const Color mutedText = Color(0xFF7A8790);
   static const Color borderColor = Color(0xFFDDE7EC);
 
-    Future<void> chooseRequester() async {
+  Future<void> chooseRequester() async {
     await AuthService.updateUserRole('requester');
 
     if (!mounted) return;
@@ -62,7 +61,7 @@ class _ChoosePageState extends State<ChoosePage> {
                   width: veryShort ? 190 : 230,
                   height: veryShort ? 190 : 230,
                   decoration: BoxDecoration(
-                    color: teal.withOpacity(0.055),
+                    color: teal.withValues(alpha: 0.055),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -134,14 +133,14 @@ class _ChoosePageState extends State<ChoosePage> {
                                 width: double.infinity,
                                 padding: EdgeInsets.all(veryShort ? 14 : 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.94),
+                                  color: Colors.white.withValues(alpha: 0.94),
                                   borderRadius: BorderRadius.circular(30),
                                   border: Border.all(
-                                    color: borderColor.withOpacity(0.9),
+                                    color: borderColor.withValues(alpha: 0.9),
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: navy.withOpacity(0.055),
+                                      color: navy.withValues(alpha: 0.055),
                                       blurRadius: 24,
                                       offset: const Offset(0, 14),
                                     ),
@@ -149,7 +148,7 @@ class _ChoosePageState extends State<ChoosePage> {
                                 ),
                                 child: Column(
                                   children: [
-                                   ChooseOptionButton(
+                                    ChooseOptionButton(
                                       title: 'Requester',
                                       description:
                                           'Post errands and get help from nearby runners.',
@@ -161,7 +160,7 @@ class _ChoosePageState extends State<ChoosePage> {
 
                                     SizedBox(height: veryShort ? 10 : 12),
 
-                                   ChooseOptionButton(
+                                    ChooseOptionButton(
                                       title: 'Runner',
                                       description:
                                           'Accept tasks and help people with local errands.',
@@ -291,7 +290,7 @@ class ChooseOptionButton extends StatelessWidget {
 
     final Color titleColor = isPrimary ? Colors.white : navy;
     final Color descriptionColor = isPrimary
-        ? Colors.white.withOpacity(0.84)
+        ? Colors.white.withValues(alpha: 0.84)
         : subtitleText;
     final Color iconColor = isPrimary ? Colors.white : teal;
     final Color arrowColor = isPrimary ? navy : teal;
@@ -329,7 +328,7 @@ class ChooseOptionButton extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: navy.withOpacity(isPrimary ? 0.13 : 0.035),
+                color: navy.withValues(alpha: isPrimary ? 0.13 : 0.035),
                 blurRadius: isPrimary ? 18 : 14,
                 offset: const Offset(0, 8),
               ),
@@ -343,11 +342,11 @@ class ChooseOptionButton extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isPrimary
-                      ? Colors.white.withOpacity(0.10)
+                      ? Colors.white.withValues(alpha: 0.10)
                       : const Color(0xFFF1F6F8),
                   border: Border.all(
                     color: isPrimary
-                        ? Colors.white.withOpacity(0.16)
+                        ? Colors.white.withValues(alpha: 0.16)
                         : borderColor,
                   ),
                 ),

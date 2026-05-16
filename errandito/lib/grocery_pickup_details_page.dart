@@ -53,10 +53,10 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC).withOpacity(0.80),
+                    color: const Color(0xFFF8FAFC).withValues(alpha: 0.80),
                     border: Border(
                       bottom: BorderSide(
-                        color: const Color(0xFFE2E8F0).withOpacity(0.80),
+                        color: const Color(0xFFE2E8F0).withValues(alpha: 0.80),
                       ),
                     ),
                   ),
@@ -111,10 +111,7 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: const Color(0xFFD6E5EC),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: navy,
-                                ),
+                                child: const Icon(Icons.person, color: navy),
                               );
                             },
                           ),
@@ -140,10 +137,7 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                               SizedBox(width: 10),
                               Text(
                                 'Job ID: #GPC-9921',
-                                style: TextStyle(
-                                  color: bodyText,
-                                  fontSize: 14,
-                                ),
+                                style: TextStyle(color: bodyText, fontSize: 14),
                               ),
                             ],
                           ),
@@ -206,7 +200,7 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 2,
                                   offset: const Offset(0, 1),
                                 ),
@@ -225,17 +219,18 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, stackTrace) {
-                                        return Container(
-                                          color: const Color(0xFFECEEF1),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.shopping_basket_outlined,
-                                              color: navy,
-                                              size: 64,
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                            return Container(
+                                              color: const Color(0xFFECEEF1),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons
+                                                      .shopping_basket_outlined,
+                                                  color: navy,
+                                                  size: 64,
+                                                ),
+                                              ),
+                                            );
+                                          },
                                     ),
                                   ),
                                 ),
@@ -247,7 +242,9 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                                       vertical: 7,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.90),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.90,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: const Text(
@@ -317,8 +314,9 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                                         Container(
                                           width: 6,
                                           height: 6,
-                                          margin:
-                                              const EdgeInsets.only(top: 8.5),
+                                          margin: const EdgeInsets.only(
+                                            top: 8.5,
+                                          ),
                                           decoration: const BoxDecoration(
                                             color: navy,
                                             shape: BoxShape.circle,
@@ -384,7 +382,9 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                               vertical: 14,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD8DADD).withOpacity(0.40),
+                              color: const Color(
+                                0xFFD8DADD,
+                              ).withValues(alpha: 0.40),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Column(
@@ -427,15 +427,10 @@ class GroceryPickupDetailsPage extends StatelessWidget {
             right: 0,
             bottom: 78,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
                 color: Color.fromRGBO(255, 255, 255, 0.80),
-                border: Border(
-                  top: BorderSide(color: Color(0xFFF1F5F9)),
-                ),
+                border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
               ),
               child: SafeArea(
                 top: false,
@@ -454,10 +449,7 @@ class GroceryPickupDetailsPage extends StatelessWidget {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [
-                                    navy,
-                                    teal,
-                                  ],
+                                  colors: [navy, teal],
                                 ),
                               ),
                               child: Material(
@@ -527,10 +519,7 @@ class PremiumBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFC7E7FF),
         borderRadius: BorderRadius.circular(10),
@@ -569,10 +558,7 @@ class InfoText extends StatelessWidget {
 class SectionTitle extends StatelessWidget {
   final String title;
 
-  const SectionTitle({
-    super.key,
-    required this.title,
-  });
+  const SectionTitle({super.key, required this.title});
 
   static const Color navy = Color(0xFF003C56);
 
@@ -580,11 +566,7 @@ class SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 32,
-          height: 2,
-          color: navy,
-        ),
+        Container(width: 32, height: 2, color: navy),
         const SizedBox(width: 10),
         Text(
           title,
@@ -603,10 +585,7 @@ class SectionTitle extends StatelessWidget {
 class LogisticsCard extends StatelessWidget {
   final LogisticsStop stop;
 
-  const LogisticsCard({
-    super.key,
-    required this.stop,
-  });
+  const LogisticsCard({super.key, required this.stop});
 
   static const Color navy = Color(0xFF003C56);
   static const Color green = Color(0xFF004035);
@@ -615,8 +594,7 @@ class LogisticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color sideColor =
-        stop.tone == LogisticsTone.pickup ? navy : green;
+    final Color sideColor = stop.tone == LogisticsTone.pickup ? navy : green;
 
     return Container(
       width: double.infinity,
@@ -624,12 +602,7 @@ class LogisticsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F7),
         borderRadius: BorderRadius.circular(10),
-        border: Border(
-          left: BorderSide(
-            color: sideColor,
-            width: 4,
-          ),
-        ),
+        border: Border(left: BorderSide(color: sideColor, width: 4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,10 +628,7 @@ class LogisticsCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             stop.address,
-            style: const TextStyle(
-              color: bodyText,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: bodyText, fontSize: 14),
           ),
           const SizedBox(height: 8),
           Text(
@@ -678,10 +648,7 @@ class LogisticsCard extends StatelessWidget {
 class PartnerLogo extends StatelessWidget {
   final String path;
 
-  const PartnerLogo({
-    super.key,
-    required this.path,
-  });
+  const PartnerLogo({super.key, required this.path});
 
   @override
   Widget build(BuildContext context) {
@@ -696,7 +663,7 @@ class PartnerLogo extends StatelessWidget {
           errorBuilder: (context, error, stackTrace) {
             return Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF003C56).withOpacity(0.2),
+                color: const Color(0xFF003C56).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
               ),
             );
@@ -723,18 +690,12 @@ class LogisticsStop {
   });
 }
 
-enum LogisticsTone {
-  pickup,
-  dropoff,
-}
+enum LogisticsTone { pickup, dropoff }
 
 class RunnerBottomNav extends StatelessWidget {
   final String active;
 
-  const RunnerBottomNav({
-    super.key,
-    required this.active,
-  });
+  const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
   static const Color muted = Color(0xFF71787E);
@@ -748,7 +709,7 @@ class RunnerBottomNav extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -8),
           ),
@@ -824,11 +785,7 @@ class BottomNavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            Icon(icon, color: color, size: 24),
             const SizedBox(height: 4),
             Text(
               label,

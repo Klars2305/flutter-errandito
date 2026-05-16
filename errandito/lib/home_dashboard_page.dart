@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/auth_service.dart';
+import 'services/errand_service.dart';
 
 class HomeDashboardPage extends StatelessWidget {
   const HomeDashboardPage({super.key});
@@ -38,7 +39,10 @@ class HomeDashboardPage extends StatelessWidget {
                         },
                         onNotificationTap: () {},
                         onFilterTap: () {
-                          Navigator.pushReplacementNamed(context, '/servicehub');
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/servicehub',
+                          );
                         },
                       ),
 
@@ -72,25 +76,7 @@ class HomeDashboardPage extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
-                      const ActiveErrandCard(
-                        icon: Icons.local_shipping_outlined,
-                        title: 'Parcel Pickup / Drop-off',
-                        runner: 'Christian Misal',
-                        status: 'On the way',
-                        eta: 'ETA 2:30 PM',
-                        progress: 0.68,
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      const ActiveErrandCard(
-                        icon: Icons.print_outlined,
-                        title: 'Printing / Documents',
-                        runner: 'Jerlyn Corpuz',
-                        status: 'In progress',
-                        eta: 'ETA 1:45 PM',
-                        progress: 0.42,
-                      ),
+                      const ActiveErrandsList(),
 
                       const SizedBox(height: 24),
 
@@ -143,7 +129,6 @@ class HomeHeroHeader extends StatelessWidget {
 
     final double imageHeight = compact ? 188 : 198;
     final double totalHeight = imageHeight + 36;
-    final double titleSize = compact ? 23 : 25;
     final double subtitleSize = compact ? 12.5 : 13.2;
 
     return SizedBox(
@@ -164,7 +149,7 @@ class HomeHeroHeader extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: navy.withOpacity(0.16),
+                  color: navy.withValues(alpha: 0.16),
                   blurRadius: 24,
                   offset: const Offset(0, 12),
                 ),
@@ -190,9 +175,9 @@ class HomeHeroHeader extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          navy.withOpacity(0.36),
-                          navy.withOpacity(0.72),
-                          navy.withOpacity(0.96),
+                          navy.withValues(alpha: 0.36),
+                          navy.withValues(alpha: 0.72),
+                          navy.withValues(alpha: 0.96),
                         ],
                       ),
                     ),
@@ -223,10 +208,14 @@ class HomeHeroHeader extends StatelessWidget {
                                     width: 42,
                                     height: 42,
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.18),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.18,
+                                      ),
                                       borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
-                                        color: Colors.white.withOpacity(0.16),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.16,
+                                        ),
                                       ),
                                     ),
                                     child: const Icon(
@@ -243,7 +232,7 @@ class HomeHeroHeader extends StatelessWidget {
                           const Spacer(),
 
                           Material(
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withValues(alpha: 0.15),
                             shape: const CircleBorder(),
                             child: InkWell(
                               onTap: onNotificationTap,
@@ -262,7 +251,7 @@ class HomeHeroHeader extends StatelessWidget {
                         ],
                       ),
 
-StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                         stream: AuthService.currentUserStream(),
                         builder: (context, snapshot) {
                           String firstName = 'User';
@@ -295,7 +284,7 @@ StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                         maxLines: 2,
                         overflow: TextOverflow.visible,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.92),
+                          color: Colors.white.withValues(alpha: 0.92),
                           fontSize: subtitleSize,
                           fontWeight: FontWeight.w600,
                           height: 1.25,
@@ -320,7 +309,7 @@ StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                 borderRadius: BorderRadius.circular(19),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
+                    color: Colors.black.withValues(alpha: 0.10),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
@@ -388,16 +377,16 @@ class HeroPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint circlePaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = Colors.white.withValues(alpha: 0.08)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
 
     final Paint dotPaint = Paint()
-      ..color = Colors.white.withOpacity(0.14)
+      ..color = Colors.white.withValues(alpha: 0.14)
       ..style = PaintingStyle.fill;
 
     final Paint linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.10)
+      ..color = Colors.white.withValues(alpha: 0.10)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
@@ -472,17 +461,6 @@ class MainActionsCarousel extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           DashboardActionCard(
-            title: 'Find a Runner',
-            subtitle: 'Choose verified nearby runners for your task.',
-            badge: 'MATCHING',
-            actionText: 'Nearby',
-            icon: Icons.delivery_dining_rounded,
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/gig-finder');
-            },
-          ),
-          const SizedBox(width: 12),
-          DashboardActionCard(
             title: 'Track Status',
             subtitle: 'Follow accepted, in-progress, and delivered errands.',
             badge: 'TRACKING',
@@ -541,7 +519,7 @@ class DashboardActionCard extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: navy.withOpacity(0.10),
+                color: navy.withValues(alpha: 0.10),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -554,7 +532,7 @@ class DashboardActionCard extends StatelessWidget {
                 bottom: -8,
                 child: Icon(
                   icon,
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                   size: 92,
                 ),
               ),
@@ -574,7 +552,7 @@ class DashboardActionCard extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.94),
+                            color: Colors.white.withValues(alpha: 0.94),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -619,7 +597,7 @@ class DashboardActionCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.80),
+                        color: Colors.white.withValues(alpha: 0.80),
                         fontSize: 11,
                         height: 1.25,
                         fontWeight: FontWeight.w500,
@@ -652,7 +630,7 @@ class ActionCardPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      ..color = Colors.white.withOpacity(0.12)
+      ..color = Colors.white.withValues(alpha: 0.12)
       ..strokeWidth = 1.3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -798,7 +776,7 @@ class ServiceGridItem extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: navy.withOpacity(0.08),
+              color: navy.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(data.icon, color: navy, size: 21),
@@ -858,7 +836,7 @@ class ActiveErrandCard extends StatelessWidget {
             border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.025),
+                color: Colors.black.withValues(alpha: 0.025),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -870,7 +848,7 @@ class ActiveErrandCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: navy.withOpacity(0.08),
+                  color: navy.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(icon, color: navy, size: 24),
@@ -953,40 +931,183 @@ class ActiveErrandCard extends StatelessWidget {
   }
 }
 
+class ActiveErrandsList extends StatelessWidget {
+  const ActiveErrandsList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: ErrandService.requesterErrandsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _DashboardEmptyCard(
+            icon: Icons.error_outline_rounded,
+            title: 'Unable to load errands',
+            message: snapshot.error.toString(),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final docs = snapshot.data!.docs.where((doc) {
+          final status = (doc.data()['status'] ?? '').toString();
+          return status != 'completed' && status != 'cancelled';
+        }).toList();
+        if (docs.isEmpty) {
+          return const _DashboardEmptyCard(
+            icon: Icons.assignment_outlined,
+            title: 'No active errands yet',
+            message:
+                'Post an errand and it will appear here after it is created.',
+          );
+        }
+        docs.sort((a, b) {
+          final ta = a.data()['createdAt'];
+          final tb = b.data()['createdAt'];
+          if (ta is Timestamp && tb is Timestamp) return tb.compareTo(ta);
+          return 0;
+        });
+        return Column(
+          children: docs.take(3).map((doc) {
+            final data = doc.data();
+            final status = (data['status'] ?? 'pending').toString();
+            final paid = (data['paymentStatus'] ?? 'unpaid').toString();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ActiveErrandCard(
+                icon: Icons.local_shipping_outlined,
+                title: (data['serviceType'] ?? 'Errand').toString(),
+                runner: (data['runnerName'] ?? 'No runner selected').toString(),
+                status: '$status • $paid',
+                eta: (data['timeSlot'] ?? 'Waiting for update').toString(),
+                progress: paid == 'paid' ? 0.55 : 0.25,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
 class RunnerList extends StatelessWidget {
   const RunnerList({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        RunnerTile(
-          image: 'assets/images/helper.png',
-          name: 'Christian Misal',
-          location: 'Near Panabo Terminal',
-          rating: '4.9',
-          jobs: '340 errands',
-          tag: 'Verified',
-        ),
-        SizedBox(height: 10),
-        RunnerTile(
-          image: 'assets/images/helper_female.png',
-          name: 'Jerlyn Corpuz',
-          location: 'Near Panabo Campus',
-          rating: '4.8',
-          jobs: '210 errands',
-          tag: 'Top Rated',
-        ),
-        SizedBox(height: 10),
-        RunnerTile(
-          image: 'assets/images/steward.png',
-          name: 'Klarence Degracia',
-          location: 'Downtown Panabo',
-          rating: '5.0',
-          jobs: '94 errands',
-          tag: 'Nearby',
-        ),
-      ],
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: AuthService.runnersStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _DashboardEmptyCard(
+            icon: Icons.error_outline_rounded,
+            title: 'Unable to load runners',
+            message: snapshot.error.toString(),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final runners = snapshot.data!.docs
+            .where((doc) => doc.id != AuthService.currentUserId)
+            .toList();
+        if (runners.isEmpty) {
+          return const _DashboardEmptyCard(
+            icon: Icons.person_search_rounded,
+            title: 'No runners signed in yet',
+            message:
+                'Runner accounts will appear here only after they sign in and choose the Runner role.',
+          );
+        }
+        runners.sort((a, b) {
+          final ar = (a.data()['averageRating'] as num?)?.toDouble() ?? 0;
+          final br = (b.data()['averageRating'] as num?)?.toDouble() ?? 0;
+          return br.compareTo(ar);
+        });
+        return Column(
+          children: runners.take(3).map((doc) {
+            final data = doc.data();
+            final rating = (data['averageRating'] as num?)?.toDouble() ?? 0.0;
+            final ratingCount = (data['ratingCount'] as num?)?.toInt() ?? 0;
+            final completed = (data['completedErrands'] as num?)?.toInt() ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: RunnerTile(
+                image: '',
+                name: (data['fullName'] ?? data['email'] ?? 'Runner')
+                    .toString(),
+                location: data['isOnline'] == true ? 'Online now' : 'Offline',
+                rating: ratingCount == 0
+                    ? 'No rating'
+                    : rating.toStringAsFixed(1),
+                jobs: '$completed errands',
+                tag: data['isVerified'] == true ? 'Verified' : 'Runner',
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _DashboardEmptyCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const _DashboardEmptyCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Color(0xFFE6E9EF)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Color(0xFF003C56), size: 30),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF003C56),
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF71787E),
+              fontSize: 12,
+              height: 1.4,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1041,7 +1162,7 @@ class RunnerTile extends StatelessWidget {
                     return Container(
                       width: 56,
                       height: 56,
-                      color: navy.withOpacity(0.10),
+                      color: navy.withValues(alpha: 0.10),
                       child: const Icon(Icons.person_rounded, color: navy),
                     );
                   },
@@ -1156,73 +1277,73 @@ class RequesterBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.96),
+          color: Colors.white.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
           ],
         ),
         child: Row(
-  children: [
-    Expanded(
-      child: NavItem(
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home_rounded,
-        label: 'Home',
-        isActive: active == 'home',
-        onTap: () {
-          Navigator.pushReplacementNamed(context, '/home');
-        },
-      ),
-    ),
-    Expanded(
-      child: NavItem(
-        icon: Icons.grid_view_rounded,
-        activeIcon: Icons.grid_view_rounded,
-        label: 'Services',
-        isActive: active == 'services',
-        onTap: () {
-          Navigator.pushReplacementNamed(context, '/servicehub');
-        },
-      ),
-    ),
-    Expanded(
-      child: NavItem(
-        icon: Icons.chat_bubble_outline_rounded,
-        activeIcon: Icons.chat_bubble_rounded,
-        label: 'Messages',
-        isActive: active == 'messages',
-        onTap: () {
-          Navigator.pushReplacementNamed(context, '/messages');
-        },
-      ),
-    ),
-    Expanded(
-      child: NavItem(
-        icon: Icons.assignment_outlined,
-        activeIcon: Icons.assignment_rounded,
-        label: 'Activity',
-        isActive: active == 'activity',
-        onTap: () {
-          Navigator.pushReplacementNamed(context, '/activity');
-        },
-      ),
-    ),
-    Expanded(
-      child: NavItem(
-        icon: Icons.person_outline_rounded,
-        activeIcon: Icons.person_rounded,
-        label: 'Profile',
-        isActive: active == 'profile',
-        onTap: () {
-          Navigator.pushReplacementNamed(context, '/profile');
-        },
-      ),
-    ),
+          children: [
+            Expanded(
+              child: NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Home',
+                isActive: active == 'home',
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/home');
+                },
+              ),
+            ),
+            Expanded(
+              child: NavItem(
+                icon: Icons.grid_view_rounded,
+                activeIcon: Icons.grid_view_rounded,
+                label: 'Services',
+                isActive: active == 'services',
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/servicehub');
+                },
+              ),
+            ),
+            Expanded(
+              child: NavItem(
+                icon: Icons.chat_bubble_outline_rounded,
+                activeIcon: Icons.chat_bubble_rounded,
+                label: 'Messages',
+                isActive: active == 'messages',
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/messages');
+                },
+              ),
+            ),
+            Expanded(
+              child: NavItem(
+                icon: Icons.assignment_outlined,
+                activeIcon: Icons.assignment_rounded,
+                label: 'Activity',
+                isActive: active == 'activity',
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/activity');
+                },
+              ),
+            ),
+            Expanded(
+              child: NavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profile',
+                isActive: active == 'profile',
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/profile');
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -1230,7 +1351,7 @@ class RequesterBottomNav extends StatelessWidget {
   }
 }
 
-class NavItem extends StatelessWidget {
+class NavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -1246,44 +1367,62 @@ class NavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<NavItem> {
   static const Color navy = Color(0xFF003C56);
-  static const Color inactive = Color(0xFF94A3B8);
+  bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isActive ? navy : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? Colors.white : inactive,
-              size: 21,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactive,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 1,
+    final bool highlighted = widget.isActive || _isHovering;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        hoverColor: navy.withValues(alpha: 0.08),
+        splashColor: navy.withValues(alpha: 0.12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : _isHovering
+                ? navy.withValues(alpha: 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                highlighted ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : navy,
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : navy,
+                  fontSize: 10,
+                  fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

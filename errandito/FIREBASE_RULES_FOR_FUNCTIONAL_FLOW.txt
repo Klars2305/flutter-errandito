@@ -1,0 +1,30 @@
+Use these temporary Firestore rules for testing only:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    match /errands/{errandId} {
+      allow read, write: if request.auth != null;
+
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+    match /reviews/{reviewId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+Collections used:
+- users: real requester/runner accounts and role
+- errands: posted errands, booking, payment status, visibility to runners, participants, unreadBy, lastMessage, lastMessageAt
+- errands/{errandId}/messages: live chat messages for each errand
+- notifications: booking and acceptance notifications
+- reviews: real rating records used to calculate averageRating and ratingCount

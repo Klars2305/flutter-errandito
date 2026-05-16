@@ -153,17 +153,17 @@ class HeaderPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.11)
+      ..color = Colors.white.withValues(alpha: 0.11)
       ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final Paint dotPaint = Paint()
-      ..color = Colors.white.withOpacity(0.16)
+      ..color = Colors.white.withValues(alpha: 0.16)
       ..style = PaintingStyle.fill;
 
     final Paint circlePaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = Colors.white.withValues(alpha: 0.08)
       ..strokeWidth = 1.1
       ..style = PaintingStyle.stroke;
 
@@ -226,7 +226,7 @@ class HeaderCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withOpacity(0.14),
+      color: Colors.white.withValues(alpha: 0.14),
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
@@ -268,7 +268,7 @@ class ProfileMainCard extends StatelessWidget {
         border: Border.all(color: cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(alpha: 0.07),
             blurRadius: 28,
             offset: const Offset(0, 16),
           ),
@@ -372,7 +372,7 @@ class ProfileMainCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: teal.withOpacity(0.10),
+              color: teal.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
             ),
             child: const Row(
@@ -481,7 +481,7 @@ class ProfileAvatar extends StatelessWidget {
       backgroundColor: Colors.white,
       child: CircleAvatar(
         radius: 40,
-        backgroundColor: navy.withOpacity(0.10),
+        backgroundColor: navy.withValues(alpha: 0.10),
         child: ClipOval(
           child: Image.asset(
             'assets/images/profile.png',
@@ -667,7 +667,7 @@ class ProfileOptionTile extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: activeColor.withOpacity(0.75),
+                color: activeColor.withValues(alpha: 0.75),
                 size: 22,
               ),
             ],

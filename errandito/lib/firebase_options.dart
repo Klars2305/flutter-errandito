@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'errandito2026.firebasestorage.app',
     measurementId: 'G-T32Y422CSR',
   );
-
 }

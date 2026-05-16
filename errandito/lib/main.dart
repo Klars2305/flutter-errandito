@@ -37,6 +37,7 @@ void main() async {
 
   runApp(const ErrandditoApp());
 }
+
 class ErrandditoApp extends StatelessWidget {
   const ErrandditoApp({super.key});
 
@@ -109,7 +110,7 @@ class ErrandditoApp extends StatelessWidget {
         '/messages': (context) => const messages.MessagesPage(),
         '/runner-message': (context) => const CoordinationPage(),
         '/runner-messages': (context) => const CoordinationPage(),
-        '/chat': (context) => const messages.MessagesPage(),
+        '/chat': (context) => const ExecutionMessagingPage(),
 
         // Tracking / Completion
         '/live-tracking': (context) => const LiveTrackingPage(),
@@ -217,7 +218,7 @@ class AestheticSplashScreen extends StatelessWidget {
                   colors: [
                     Colors.transparent,
                     Colors.transparent,
-                    background.withOpacity(0.88),
+                    background.withValues(alpha: 0.88),
                     background,
                   ],
                   stops: const [0.0, 0.48, 0.72, 1.0],
@@ -256,7 +257,7 @@ class AestheticSplashScreen extends StatelessWidget {
                     'Pagod ka na ba? Errandito na!',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: navy.withOpacity(0.94),
+                      color: navy.withValues(alpha: 0.94),
                       fontSize: narrow ? 13.5 : 14.5,
                       fontWeight: FontWeight.w700,
                       fontStyle: FontStyle.italic,
@@ -292,7 +293,7 @@ class AestheticSplashScreen extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: darkGreen.withOpacity(0.20),
+                            color: darkGreen.withValues(alpha: 0.20),
                             blurRadius: 18,
                             offset: const Offset(0, 8),
                           ),

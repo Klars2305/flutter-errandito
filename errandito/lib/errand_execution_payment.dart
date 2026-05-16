@@ -11,16 +11,8 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
   static const Color green = Color(0xFF004035);
 
   static const List<PurchaseItem> items = [
-    PurchaseItem(
-      qty: '03',
-      name: 'Organic Produce Mix',
-      price: '\$28.40',
-    ),
-    PurchaseItem(
-      qty: '01',
-      name: 'Artisan Bakery Selection',
-      price: '\$18.25',
-    ),
+    PurchaseItem(qty: '03', name: 'Organic Produce Mix', price: '\$28.40'),
+    PurchaseItem(qty: '01', name: 'Artisan Bakery Selection', price: '\$18.25'),
   ];
 
   @override
@@ -38,7 +30,7 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
                     horizontal: 16,
                     vertical: 14,
                   ),
-                  color: const Color(0xFFF8FAFC).withOpacity(0.90),
+                  color: const Color(0xFFF8FAFC).withValues(alpha: 0.90),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -182,8 +174,8 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
                                       begin: Alignment.topCenter,
                                       end: Alignment.bottomCenter,
                                       colors: [
-                                        Colors.black.withOpacity(0.08),
-                                        Colors.black.withOpacity(0.45),
+                                        Colors.black.withValues(alpha: 0.08),
+                                        Colors.black.withValues(alpha: 0.45),
                                       ],
                                     ),
                                   ),
@@ -228,7 +220,7 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(28),
                               boxShadow: [
                                 BoxShadow(
-                                  color: darkText.withOpacity(0.06),
+                                  color: darkText.withValues(alpha: 0.06),
                                   blurRadius: 48,
                                   offset: const Offset(0, 24),
                                 ),
@@ -281,9 +273,7 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
                                       alignment: Alignment.centerLeft,
                                       child: FractionallySizedBox(
                                         widthFactor: 0.57,
-                                        child: Container(
-                                          color: navy,
-                                        ),
+                                        child: Container(color: navy),
                                       ),
                                     ),
                                   ),
@@ -321,10 +311,7 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
                                       gradient: const LinearGradient(
                                         begin: Alignment.centerLeft,
                                         end: Alignment.centerRight,
-                                        colors: [
-                                          navy,
-                                          teal,
-                                        ],
+                                        colors: [navy, teal],
                                       ),
                                     ),
                                     child: Material(
@@ -378,7 +365,9 @@ class ErrandExecutionPaymentPage extends StatelessWidget {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD8DADD).withOpacity(0.20),
+                              color: const Color(
+                                0xFFD8DADD,
+                              ).withValues(alpha: 0.20),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
@@ -441,11 +430,7 @@ class FundBox extends StatelessWidget {
   final String label;
   final String amount;
 
-  const FundBox({
-    super.key,
-    required this.label,
-    required this.amount,
-  });
+  const FundBox({super.key, required this.label, required this.amount});
 
   static const Color navy = Color(0xFF003C56);
   static const Color bodyText = Color(0xFF40484E);
@@ -482,10 +467,7 @@ class FundBox extends StatelessWidget {
 class PurchaseItemRow extends StatelessWidget {
   final PurchaseItem item;
 
-  const PurchaseItemRow({
-    super.key,
-    required this.item,
-  });
+  const PurchaseItemRow({super.key, required this.item});
 
   static const Color green = Color(0xFF004035);
   static const Color borderColor = Color(0xFFC0C7CE);
@@ -496,9 +478,7 @@ class PurchaseItemRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: borderColor.withOpacity(0.20),
-          ),
+          bottom: BorderSide(color: borderColor.withValues(alpha: 0.20)),
         ),
       ),
       child: Row(
@@ -507,7 +487,7 @@ class PurchaseItemRow extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: green.withOpacity(0.10),
+              color: green.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -562,10 +542,7 @@ class PurchaseItem {
 class RunnerBottomNav extends StatelessWidget {
   final String active;
 
-  const RunnerBottomNav({
-    super.key,
-    required this.active,
-  });
+  const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
   static const Color muted = Color(0xFF71787E);
@@ -579,7 +556,7 @@ class RunnerBottomNav extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -8),
           ),
@@ -655,11 +632,7 @@ class BottomNavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            Icon(icon, color: color, size: 24),
             const SizedBox(height: 4),
             Text(
               label,

@@ -20,10 +20,7 @@ class PaymentSecuredPage extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -47,10 +44,7 @@ class PaymentSecuredPage extends StatelessWidget {
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
                             color: const Color(0xFFD6E5EC),
-                            child: const Icon(
-                              Icons.person,
-                              color: navy,
-                            ),
+                            child: const Icon(Icons.person, color: navy),
                           );
                         },
                       ),
@@ -76,10 +70,7 @@ class PaymentSecuredPage extends StatelessWidget {
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                navy,
-                                teal,
-                              ],
+                              colors: [navy, teal],
                             ),
                           ),
                           child: const Center(
@@ -128,7 +119,7 @@ class PaymentSecuredPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: darkText.withOpacity(0.04),
+                                color: darkText.withValues(alpha: 0.04),
                                 blurRadius: 48,
                                 offset: const Offset(0, 24),
                               ),
@@ -179,18 +170,9 @@ class PaymentSecuredPage extends StatelessWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  TimelineLabel(
-                                    text: 'Funded',
-                                    active: true,
-                                  ),
-                                  TimelineLabel(
-                                    text: 'Secured',
-                                    active: true,
-                                  ),
-                                  TimelineLabel(
-                                    text: 'Release',
-                                    active: false,
-                                  ),
+                                  TimelineLabel(text: 'Funded', active: true),
+                                  TimelineLabel(text: 'Secured', active: true),
+                                  TimelineLabel(text: 'Release', active: false),
                                 ],
                               ),
 
@@ -249,8 +231,7 @@ class PaymentSecuredPage extends StatelessWidget {
                                   child: Image.asset(
                                     'assets/images/steward.png',
                                     fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) {
+                                    errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: const Color(0xFFD6E5EC),
                                         child: const Icon(
@@ -310,10 +291,7 @@ class PaymentSecuredPage extends StatelessWidget {
                               gradient: const LinearGradient(
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
-                                colors: [
-                                  navy,
-                                  teal,
-                                ],
+                                colors: [navy, teal],
                               ),
                             ),
                             child: Material(
@@ -374,8 +352,9 @@ class PaymentInfoBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
-        crossAxisAlignment:
-            alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: alignRight
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Text(
             label,
@@ -407,11 +386,7 @@ class TimelineLabel extends StatelessWidget {
   final String text;
   final bool active;
 
-  const TimelineLabel({
-    super.key,
-    required this.text,
-    required this.active,
-  });
+  const TimelineLabel({super.key, required this.text, required this.active});
 
   @override
   Widget build(BuildContext context) {

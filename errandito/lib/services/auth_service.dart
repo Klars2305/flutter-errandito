@@ -8,6 +8,7 @@ class AuthService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   static User? get currentUser => _auth.currentUser;
+  static String? get currentUserId => _auth.currentUser?.uid;
 
   static Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email.trim());
@@ -26,7 +27,6 @@ class AuthService {
         );
 
     final User? user = credential.user;
-
     if (user == null) {
       throw FirebaseAuthException(
         code: 'user-not-created',
@@ -43,9 +43,13 @@ class AuthService {
       'phone': phone.trim(),
       'role': null,
       'isVerified': false,
+      'isOnline': false,
+      'averageRating': 0.0,
+      'ratingCount': 0,
+      'completedErrands': 0,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
 
     return credential;
   }
@@ -53,16 +57,29 @@ class AuthService {
   static Future<UserCredential> signIn({
     required String email,
     required String password,
-  }) {
-    return _auth.signInWithEmailAndPassword(
+  }) async {
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
+
+    final user = credential.user;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'email': user.email,
+        'fullName': user.displayName ?? user.email?.split('@').first ?? 'User',
+        'isOnline': true,
+        'lastLoginAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    return credential;
   }
 
   static Future<void> updateUserRole(String role) async {
     final User? user = _auth.currentUser;
-
     if (user == null) {
       throw FirebaseAuthException(
         code: 'no-current-user',
@@ -70,39 +87,56 @@ class AuthService {
       );
     }
 
-    await _firestore.collection('users').doc(user.uid).update({
+    await _firestore.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'email': user.email,
+      'fullName': user.displayName ?? user.email?.split('@').first ?? 'User',
       'role': role,
+      'isOnline': true,
+      'averageRating': FieldValue.increment(0),
+      'ratingCount': FieldValue.increment(0),
+      'completedErrands': FieldValue.increment(0),
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
   }
 
   static Stream<DocumentSnapshot<Map<String, dynamic>>> currentUserStream() {
     final User? user = _auth.currentUser;
-
     if (user == null) {
       throw FirebaseAuthException(
         code: 'no-current-user',
         message: 'No logged-in user found.',
       );
     }
-
     return _firestore.collection('users').doc(user.uid).snapshots();
   }
 
   static Future<DocumentSnapshot<Map<String, dynamic>>> getCurrentUserDoc() {
     final User? user = _auth.currentUser;
-
     if (user == null) {
       throw FirebaseAuthException(
         code: 'no-current-user',
         message: 'No logged-in user found.',
       );
     }
-
     return _firestore.collection('users').doc(user.uid).get();
   }
 
-  static Future<void> signOut() {
-    return _auth.signOut();
+  static Stream<QuerySnapshot<Map<String, dynamic>>> runnersStream() {
+    return _firestore
+        .collection('users')
+        .where('role', isEqualTo: 'runner')
+        .snapshots();
+  }
+
+  static Future<void> signOut() async {
+    final User? user = _auth.currentUser;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).set({
+        'isOnline': false,
+        'lastSeenAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+    await _auth.signOut();
   }
 }

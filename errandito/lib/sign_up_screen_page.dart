@@ -11,12 +11,11 @@ class SignUpScreenPage extends StatefulWidget {
 }
 
 class _SignUpScreenPageState extends State<SignUpScreenPage> {
-  
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  
+
   bool isLoading = false;
   bool obscurePassword = true;
   bool agreedToTerms = false;
@@ -24,7 +23,7 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
   void goToLogin() {
     Navigator.pushReplacementNamed(context, '/login');
   }
-  
+
   String _firebaseErrorMessage(FirebaseAuthException error) {
     switch (error.code) {
       case 'email-already-in-use':
@@ -42,11 +41,8 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
 
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
   static const Color darkText = Color(0xFF191C1E);
   static const Color softText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE0E4EA);
-  static const Color divider = Color(0xFFE1E2E6);
 
   Future<void> createAccount() async {
     final String fullName = nameController.text.trim();
@@ -101,9 +97,15 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
         password: password,
       );
 
+      await AuthService.signOut();
+
       if (!mounted) return;
 
-      Navigator.pushReplacementNamed(context, '/identity');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account created. Please sign in.')),
+      );
+
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
 
@@ -194,7 +196,7 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: darkText.withOpacity(0.045),
+                          color: darkText.withValues(alpha: 0.045),
                           blurRadius: 28,
                           offset: const Offset(0, 14),
                         ),
@@ -318,7 +320,7 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
 
                         SizedBox(height: veryShortScreen ? 14 : 18),
 
-                       GradientMainButton(
+                        GradientMainButton(
                           label: isLoading
                               ? 'Creating Account...'
                               : 'Create Account',
@@ -528,7 +530,7 @@ class GradientMainButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: navy.withOpacity(0.12),
+              color: navy.withValues(alpha: 0.12),
               blurRadius: 14,
               offset: const Offset(0, 7),
             ),

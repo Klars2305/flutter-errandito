@@ -174,7 +174,7 @@ class OnboardingScreenContent extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [softGreen, background, teal.withOpacity(0.08)],
+                colors: [softGreen, background, teal.withValues(alpha: 0.08)],
               ),
             ),
           ),
@@ -183,13 +183,13 @@ class OnboardingScreenContent extends StatelessWidget {
         Positioned(
           left: -90,
           top: 100,
-          child: SoftCircle(size: 220, color: teal.withOpacity(0.08)),
+          child: SoftCircle(size: 220, color: teal.withValues(alpha: 0.08)),
         ),
 
         Positioned(
           right: -90,
           bottom: 82,
-          child: SoftCircle(size: 235, color: deepTeal.withOpacity(0.07)),
+          child: SoftCircle(size: 235, color: deepTeal.withValues(alpha: 0.07)),
         ),
 
         Positioned(
@@ -243,7 +243,7 @@ class OnboardingScreenContent extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: navy.withOpacity(0.08),
+                  color: navy.withValues(alpha: 0.08),
                   blurRadius: 30,
                   offset: const Offset(0, -12),
                 ),
@@ -337,7 +337,7 @@ class CleanOnboardingButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: deepTeal.withOpacity(0.18),
+              color: deepTeal.withValues(alpha: 0.18),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),

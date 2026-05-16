@@ -57,7 +57,7 @@ class PaymentEarningsPage extends StatelessWidget {
                     horizontal: 16,
                     vertical: 14,
                   ),
-                  color: const Color(0xFFF8FAFC).withOpacity(0.90),
+                  color: const Color(0xFFF8FAFC).withValues(alpha: 0.90),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -124,14 +124,11 @@ class PaymentEarningsPage extends StatelessWidget {
                               gradient: const LinearGradient(
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
-                                colors: [
-                                  navy,
-                                  teal,
-                                ],
+                                colors: [navy, teal],
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: navy.withOpacity(0.12),
+                                  color: navy.withValues(alpha: 0.12),
                                   blurRadius: 48,
                                   offset: const Offset(0, 24),
                                 ),
@@ -143,8 +140,9 @@ class PaymentEarningsPage extends StatelessWidget {
                                 Text(
                                   'TOTAL WEEKLY EARNINGS',
                                   style: TextStyle(
-                                    color:
-                                        const Color(0xFFC7E7FF).withOpacity(0.90),
+                                    color: const Color(
+                                      0xFFC7E7FF,
+                                    ).withValues(alpha: 0.90),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.96,
@@ -195,7 +193,7 @@ class PaymentEarningsPage extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Material(
-                                      color: teal.withOpacity(0.40),
+                                      color: teal.withValues(alpha: 0.40),
                                       borderRadius: BorderRadius.circular(10),
                                       child: InkWell(
                                         borderRadius: BorderRadius.circular(10),
@@ -206,11 +204,13 @@ class PaymentEarningsPage extends StatelessWidget {
                                             vertical: 10,
                                           ),
                                           decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                             border: Border.all(
-                                              color:
-                                                  Colors.white.withOpacity(0.15),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.15,
+                                              ),
                                             ),
                                           ),
                                           child: const Text(
@@ -244,7 +244,8 @@ class PaymentEarningsPage extends StatelessWidget {
                           const StatCard(
                             label: 'TASK COMPLETIONS',
                             value: '24',
-                            note: 'Top 5% of stewards in your region this week.',
+                            note:
+                                'Top 5% of stewards in your region this week.',
                             showProgress: false,
                           ),
 
@@ -406,9 +407,7 @@ class StatCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(
                     widthFactor: 0.65,
-                    child: Container(
-                      color: darkGreen,
-                    ),
+                    child: Container(color: darkGreen),
                   ),
                 ),
               ),
@@ -433,20 +432,19 @@ class StatCard extends StatelessWidget {
 class TransactionTile extends StatelessWidget {
   final TransactionItem transaction;
 
-  const TransactionTile({
-    super.key,
-    required this.transaction,
-  });
+  const TransactionTile({super.key, required this.transaction});
 
   static const Color darkText = Color(0xFF191C1E);
   static const Color mutedText = Color(0xFF71787E);
 
   @override
   Widget build(BuildContext context) {
-    final Color badgeBg =
-        transaction.pending ? const Color(0xFFD6E5EC) : const Color(0xFFB1EFDE);
-    final Color badgeText =
-        transaction.pending ? const Color(0xFF58676D) : const Color(0xFF00201A);
+    final Color badgeBg = transaction.pending
+        ? const Color(0xFFD6E5EC)
+        : const Color(0xFFB1EFDE);
+    final Color badgeText = transaction.pending
+        ? const Color(0xFF58676D)
+        : const Color(0xFF00201A);
 
     return Container(
       width: double.infinity,
@@ -496,10 +494,7 @@ class TransactionTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 2,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                 decoration: BoxDecoration(
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(10),
@@ -540,10 +535,7 @@ class TransactionItem {
 class RunnerBottomNav extends StatelessWidget {
   final String active;
 
-  const RunnerBottomNav({
-    super.key,
-    required this.active,
-  });
+  const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
   static const Color muted = Color(0xFF71787E);
@@ -557,7 +549,7 @@ class RunnerBottomNav extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -8),
           ),
@@ -631,11 +623,7 @@ class BottomNavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            Icon(icon, color: color, size: 24),
             const SizedBox(height: 4),
             Text(
               label,

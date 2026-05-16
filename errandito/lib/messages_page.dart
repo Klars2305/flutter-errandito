@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import 'services/errand_service.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -15,96 +18,6 @@ class _MessagesPageState extends State<MessagesPage> {
 
   static const Color background = Color(0xFFF8F9FD);
 
-  late List<MessageItem> messages;
-
-  @override
-  void initState() {
-    super.initState();
-
-    messages = const [
-      MessageItem(
-        name: 'Ella Cruz',
-        role: 'Requester',
-        task: 'Courier Parcel Pickup',
-        time: '10:42 PM',
-        preview: 'Can you send a photo once you arrive at JRS?',
-        image: 'assets/images/helper_female.png',
-        status: 'In Progress',
-        unreadCount: 2,
-        isUnread: true,
-      ),
-      MessageItem(
-        name: 'Mia Santos',
-        role: 'Requester',
-        task: 'Meal Pickup',
-        time: '4 hours ago',
-        preview: 'Please check if the drinks are included.',
-        image: 'assets/images/helper.png',
-        status: 'Pending',
-        unreadCount: 1,
-        isUnread: true,
-      ),
-      MessageItem(
-        name: 'John Reyes',
-        role: 'Requester',
-        task: 'Print Project Files',
-        time: '5 hours ago',
-        preview: 'The file is already sent. Please keep the receipt.',
-        image: 'assets/images/steward.png',
-        status: 'Accepted',
-        unreadCount: 0,
-        isUnread: false,
-      ),
-      MessageItem(
-        name: 'Ana Corpuz',
-        role: 'Requester',
-        task: 'Laundry Pickup',
-        time: 'Yesterday',
-        preview: 'Thank you. I received the laundry.',
-        image: 'assets/images/helper_female.png',
-        status: 'Completed',
-        unreadCount: 0,
-        isUnread: false,
-      ),
-      MessageItem(
-        name: 'Ralph Dela Cruz',
-        role: 'Requester',
-        task: 'School Supplies',
-        time: '23/05/2024',
-        preview: 'The notebook and pens are correct.',
-        image: 'assets/images/profile.png',
-        status: 'Completed',
-        unreadCount: 0,
-        isUnread: false,
-      ),
-    ];
-  }
-
-  int get totalUnread {
-    return messages.fold<int>(0, (sum, message) => sum + message.unreadCount);
-  }
-
-  List<MessageItem> get filteredMessages {
-    final String query = searchQuery.trim().toLowerCase();
-
-    return messages.where((message) {
-      final bool matchesFilter =
-          selectedFilter == 'All' ||
-          (selectedFilter == 'Unread' && message.isUnread) ||
-          (selectedFilter == 'Active' && message.status != 'Completed');
-
-      final bool matchesSearch =
-          query.isEmpty ||
-          message.name.toLowerCase().contains(query) ||
-          message.role.toLowerCase().contains(query) ||
-          message.task.toLowerCase().contains(query) ||
-          message.preview.toLowerCase().contains(query) ||
-          message.status.toLowerCase().contains(query);
-
-      return matchesFilter && matchesSearch;
-    }).toList();
-  }
-
   @override
   void dispose() {
     searchController.dispose();
@@ -113,31 +26,85 @@ class _MessagesPageState extends State<MessagesPage> {
 
   void clearSearch() {
     searchController.clear();
-
-    setState(() {
-      searchQuery = '';
-    });
+    setState(() => searchQuery = '');
   }
 
-  void openConversation(MessageItem item) {
-    final int index = messages.indexOf(item);
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final currentUserId = ErrandService.currentUserId;
+    final query = searchQuery.trim().toLowerCase();
 
-    if (index != -1) {
-      setState(() {
-        messages[index] = item.copyWith(isUnread: false, unreadCount: 0);
-      });
-    }
+    final filtered = docs.where((doc) {
+      final data = doc.data();
+      final serviceType = (data['serviceType'] ?? data['title'] ?? '').toString();
+      final requesterName = (data['requesterName'] ?? '').toString();
+      final runnerName = (data['runnerName'] ?? '').toString();
+      final lastMessage = (data['lastMessage'] ?? '').toString();
+      final status = (data['status'] ?? '').toString();
+
+      final unreadBy = data['unreadBy'];
+      final isUnread = unreadBy is Map &&
+          currentUserId != null &&
+          unreadBy[currentUserId] == true;
+
+      final isActive = status != 'completed';
+      final matchesFilter = selectedFilter == 'All' ||
+          (selectedFilter == 'Unread' && isUnread) ||
+          (selectedFilter == 'Active' && isActive);
+
+      final searchableText = [
+        serviceType,
+        requesterName,
+        runnerName,
+        lastMessage,
+        status,
+      ].join(' ').toLowerCase();
+
+      final matchesSearch = query.isEmpty || searchableText.contains(query);
+      return matchesFilter && matchesSearch;
+    }).toList();
+
+    filtered.sort((a, b) {
+      final aTime = a.data()['lastMessageAt'];
+      final bTime = b.data()['lastMessageAt'];
+      if (aTime is Timestamp && bTime is Timestamp) {
+        return bTime.compareTo(aTime);
+      }
+      if (aTime is Timestamp) return -1;
+      if (bTime is Timestamp) return 1;
+
+      final aCreated = a.data()['createdAt'];
+      final bCreated = b.data()['createdAt'];
+      if (aCreated is Timestamp && bCreated is Timestamp) {
+        return bCreated.compareTo(aCreated);
+      }
+      return 0;
+    });
+
+    return filtered;
+  }
+
+  int _totalUnread(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final currentUserId = ErrandService.currentUserId;
+    if (currentUserId == null) return 0;
+
+    return docs.where((doc) {
+      final unreadBy = doc.data()['unreadBy'];
+      return unreadBy is Map && unreadBy[currentUserId] == true;
+    }).length;
+  }
+
+  Future<void> openConversation(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    await ErrandService.markConversationRead(doc.id);
+    if (!mounted) return;
 
     Navigator.pushNamed(
       context,
-      '/coordination',
-      arguments: {
-        'name': item.name,
-        'role': item.role,
-        'task': item.task,
-        'image': item.image,
-        'status': item.status,
-      },
+      '/execution-messaging',
+      arguments: doc.id,
     );
   }
 
@@ -152,93 +119,417 @@ class _MessagesPageState extends State<MessagesPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                16,
-                horizontalPadding,
-                112,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 430),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MessagesHeader(
-                        unreadCount: totalUnread,
-                        onBackTap: () {
-                          Navigator.pushNamed(context, '/home-dashboard');
-                        },
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: ErrandService.conversationsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF003C56)),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'Unable to load conversations:\n${snapshot.error}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF71787E),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ),
+                  );
+                }
 
-                      const SizedBox(height: 18),
+                final allDocs = snapshot.data?.docs ?? [];
+                final filteredDocs = _filterDocs(allDocs);
+                final unreadCount = _totalUnread(allDocs);
 
-                      MessageSearchBar(
-                        controller: searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            searchQuery = value;
-                          });
-                        },
-                        onClear: clearSearch,
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      MessageFilterChips(
-                        selectedFilter: selectedFilter,
-                        onChanged: (filter) {
-                          setState(() {
-                            selectedFilter = filter;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      Row(
+                return SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    16,
+                    horizontalPadding,
+                    112,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 430),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Expanded(
-                            child: Text(
-                              'Errand Conversations',
-                              style: TextStyle(
-                                color: Color(0xFF003C56),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
+                          MessagesHeader(
+                            unreadCount: unreadCount,
+                            onBackTap: () {
+                              Navigator.pushNamed(context, '/home-dashboard');
+                            },
                           ),
-                          Text(
-                            '${filteredMessages.length} chats',
-                            style: const TextStyle(
-                              color: Color(0xFF71787E),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          const SizedBox(height: 18),
+                          MessageSearchBar(
+                            controller: searchController,
+                            onChanged: (value) {
+                              setState(() => searchQuery = value);
+                            },
+                            onClear: clearSearch,
+                          ),
+                          const SizedBox(height: 14),
+                          MessageFilterChips(
+                            selectedFilter: selectedFilter,
+                            onChanged: (filter) {
+                              setState(() => selectedFilter = filter);
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Errand Conversations',
+                                  style: TextStyle(
+                                    color: Color(0xFF003C56),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${filteredDocs.length} chats',
+                                style: const TextStyle(
+                                  color: Color(0xFF71787E),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          RealtimeMessageList(
+                            docs: filteredDocs,
+                            onOpenConversation: openConversation,
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 12),
-
-                      MessageList(
-                        messages: filteredMessages,
-                        onOpenConversation: openConversation,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
-
             const Align(
               alignment: Alignment.bottomCenter,
               child: RequesterBottomNav(active: 'messages'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class RealtimeMessageList extends StatelessWidget {
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
+  final ValueChanged<QueryDocumentSnapshot<Map<String, dynamic>>> onOpenConversation;
+
+  const RealtimeMessageList({
+    super.key,
+    required this.docs,
+    required this.onOpenConversation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (docs.isEmpty) return const EmptyMessagesState();
+
+    return Column(
+      children: docs.map((doc) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: RealtimeMessageTile(
+            doc: doc,
+            onTap: () => onOpenConversation(doc),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class RealtimeMessageTile extends StatelessWidget {
+  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
+  final VoidCallback onTap;
+
+  const RealtimeMessageTile({
+    super.key,
+    required this.doc,
+    required this.onTap,
+  });
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005477);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
+
+  String _otherPersonName(Map<String, dynamic> data) {
+    final currentUserId = ErrandService.currentUserId;
+    final requesterId = (data['requesterId'] ?? '').toString();
+    final requesterName = (data['requesterName'] ?? 'Requester').toString();
+    final runnerId = (data['runnerId'] ?? '').toString();
+    final runnerName = (data['runnerName'] ?? '').toString();
+
+    if (currentUserId == requesterId) {
+      return runnerName.isEmpty || runnerName == 'null'
+          ? 'Waiting for runner'
+          : runnerName;
+    }
+    if (currentUserId == runnerId) return requesterName;
+    return requesterName.isNotEmpty ? requesterName : runnerName;
+  }
+
+  String _role(Map<String, dynamic> data) {
+    final currentUserId = ErrandService.currentUserId;
+    final requesterId = (data['requesterId'] ?? '').toString();
+    if (currentUserId == requesterId) return 'Runner';
+    return 'Requester';
+  }
+
+  String _timeText(Map<String, dynamic> data) {
+    final lastMessageAt = data['lastMessageAt'];
+    final createdAt = data['createdAt'];
+    Timestamp? timestamp;
+    if (lastMessageAt is Timestamp) {
+      timestamp = lastMessageAt;
+    } else if (createdAt is Timestamp) {
+      timestamp = createdAt;
+    }
+    if (timestamp == null) return '';
+
+    final date = timestamp.toDate();
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    if (difference.inMinutes < 1) return 'Now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays == 1) return 'Yesterday';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'pending_payment':
+        return 'Pending';
+      case 'posted':
+      case 'paid':
+      case 'booked':
+      case 'booked_paid':
+        return 'Pending';
+      case 'accepted':
+        return 'Accepted';
+      case 'in_progress':
+        return 'In Progress';
+      case 'on_the_way':
+        return 'On the Way';
+      case 'completed':
+        return 'Completed';
+      default:
+        return status.isEmpty ? 'Active' : status;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = doc.data();
+    final currentUserId = ErrandService.currentUserId;
+    final unreadBy = data['unreadBy'];
+    final unread = unreadBy is Map &&
+        currentUserId != null &&
+        unreadBy[currentUserId] == true;
+
+    final name = _otherPersonName(data);
+    final role = _role(data);
+    final task = (data['serviceType'] ?? data['title'] ?? 'Errand').toString();
+    final preview = (data['lastMessage'] ?? '').toString().trim().isEmpty
+        ? 'No messages yet. Tap to start chatting.'
+        : data['lastMessage'].toString();
+    final status = _statusLabel((data['status'] ?? '').toString());
+    final time = _timeText(data);
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: unread ? teal.withOpacity(0.42) : borderColor,
+              width: unread ? 1.4 : 1,
+            ),
+            boxShadow: [
+              if (unread)
+                BoxShadow(
+                  color: teal.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+            ],
+          ),
+          child: Row(
+            children: [
+              if (unread)
+                Container(
+                  width: 5,
+                  height: 84,
+                  decoration: const BoxDecoration(
+                    color: teal,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(18),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(11),
+                  child: Row(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: navy.withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(Icons.person_rounded, color: navy),
+                          ),
+                          if (status != 'Completed')
+                            Positioned(
+                              right: -1,
+                              bottom: -1,
+                              child: Container(
+                                width: 13,
+                                height: 13,
+                                decoration: BoxDecoration(
+                                  color: teal,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: navy,
+                                      fontSize: 14,
+                                      fontWeight: unread ? FontWeight.w900 : FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  time,
+                                  style: TextStyle(
+                                    color: unread ? teal : mutedText,
+                                    fontSize: 9.5,
+                                    fontWeight: unread ? FontWeight.w900 : FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '$role • $task',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: teal,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    preview,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: unread ? navy : mutedText,
+                                      fontSize: 11.2,
+                                      fontWeight: unread ? FontWeight.w800 : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (unread)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: teal,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      '1',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Icon(Icons.done_all_rounded, color: teal, size: 15),
+                              ],
+                            ),
+                            if (unread) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: teal.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'UNREAD',
+                                  style: TextStyle(
+                                    color: teal,
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -284,7 +575,6 @@ class MessagesHeader extends StatelessWidget {
             ),
           ),
         ),
-
         const Expanded(
           child: Center(
             child: Text(
@@ -297,7 +587,6 @@ class MessagesHeader extends StatelessWidget {
             ),
           ),
         ),
-
         Container(
           width: 42,
           height: 42,
@@ -350,9 +639,7 @@ class MessageSearchBar extends StatelessWidget {
       child: Row(
         children: [
           const Icon(Icons.search_rounded, color: mutedText, size: 21),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: TextField(
               controller: controller,
@@ -375,7 +662,6 @@ class MessageSearchBar extends StatelessWidget {
               ),
             ),
           ),
-
           if (controller.text.isNotEmpty)
             IconButton(
               onPressed: onClear,
@@ -412,9 +698,7 @@ class MessageFilterChips extends StatelessWidget {
               color: isActive ? const Color(0xFF003C56) : Colors.white,
               borderRadius: BorderRadius.circular(999),
               child: InkWell(
-                onTap: () {
-                  onChanged(filter);
-                },
+                onTap: () => onChanged(filter),
                 borderRadius: BorderRadius.circular(999),
                 child: Container(
                   height: 36,
@@ -422,9 +706,7 @@ class MessageFilterChips extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
-                      color: isActive
-                          ? const Color(0xFF003C56)
-                          : const Color(0xFFE6E9EF),
+                      color: isActive ? const Color(0xFF003C56) : const Color(0xFFE6E9EF),
                     ),
                   ),
                   child: Text(
@@ -445,40 +727,6 @@ class MessageFilterChips extends StatelessWidget {
   }
 }
 
-class MessageList extends StatelessWidget {
-  final List<MessageItem> messages;
-  final ValueChanged<MessageItem> onOpenConversation;
-
-  const MessageList({
-    super.key,
-    required this.messages,
-    required this.onOpenConversation,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (messages.isEmpty) {
-      return const EmptyMessagesState();
-    }
-
-    return Column(
-      children: messages
-          .map(
-            (message) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: MessageTile(
-                item: message,
-                onTap: () {
-                  onOpenConversation(message);
-                },
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
 class EmptyMessagesState extends StatelessWidget {
   const EmptyMessagesState({super.key});
 
@@ -490,7 +738,7 @@ class EmptyMessagesState extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Color(0xFFE6E9EF)),
+        border: Border.all(color: const Color(0xFFE6E9EF)),
       ),
       child: const Column(
         children: [
@@ -510,7 +758,8 @@ class EmptyMessagesState extends StatelessWidget {
           ),
           SizedBox(height: 4),
           Text(
-            'Try another search or filter.',
+            'Accepted errands and live chats will appear here.',
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF71787E),
               fontSize: 12,
@@ -523,294 +772,12 @@ class EmptyMessagesState extends StatelessWidget {
   }
 }
 
-class MessageTile extends StatelessWidget {
-  final MessageItem item;
-  final VoidCallback onTap;
-
-  const MessageTile({super.key, required this.item, required this.onTap});
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-  static const Color mutedText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE6E9EF);
-
-  @override
-  Widget build(BuildContext context) {
-    final bool unread = item.isUnread && item.unreadCount > 0;
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: unread ? teal.withOpacity(0.42) : borderColor,
-              width: unread ? 1.4 : 1,
-            ),
-            boxShadow: [
-              if (unread)
-                BoxShadow(
-                  color: teal.withOpacity(0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-            ],
-          ),
-          child: Row(
-            children: [
-              if (unread)
-                Container(
-                  width: 5,
-                  height: 84,
-                  decoration: const BoxDecoration(
-                    color: teal,
-                    borderRadius: BorderRadius.horizontal(
-                      left: Radius.circular(18),
-                    ),
-                  ),
-                ),
-
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(11),
-                  child: Row(
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              item.image,
-                              width: 54,
-                              height: 54,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 54,
-                                  height: 54,
-                                  color: navy.withOpacity(0.10),
-                                  child: const Icon(
-                                    Icons.person_rounded,
-                                    color: navy,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          if (item.status != 'Completed')
-                            Positioned(
-                              right: -1,
-                              bottom: -1,
-                              child: Container(
-                                width: 13,
-                                height: 13,
-                                decoration: BoxDecoration(
-                                  color: teal,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: navy,
-                                      fontSize: 14,
-                                      fontWeight: unread
-                                          ? FontWeight.w900
-                                          : FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  item.time,
-                                  style: TextStyle(
-                                    color: unread ? teal : mutedText,
-                                    fontSize: 9.5,
-                                    fontWeight: unread
-                                        ? FontWeight.w900
-                                        : FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 3),
-
-                            Text(
-                              item.task,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: teal,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-
-                            const SizedBox(height: 4),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item.preview,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: unread ? navy : mutedText,
-                                      fontSize: 11.2,
-                                      fontWeight: unread
-                                          ? FontWeight.w800
-                                          : FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(width: 8),
-
-                                if (unread)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: teal,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      '${item.unreadCount}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  const Icon(
-                                    Icons.done_all_rounded,
-                                    color: teal,
-                                    size: 15,
-                                  ),
-                              ],
-                            ),
-
-                            if (unread) ...[
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: teal.withOpacity(0.10),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: const Text(
-                                  'UNREAD',
-                                  style: TextStyle(
-                                    color: teal,
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class MessageItem {
-  final String name;
-  final String role;
-  final String task;
-  final String time;
-  final String preview;
-  final String image;
-  final String status;
-  final int unreadCount;
-  final bool isUnread;
-
-  const MessageItem({
-    required this.name,
-    required this.role,
-    required this.task,
-    required this.time,
-    required this.preview,
-    required this.image,
-    required this.status,
-    required this.unreadCount,
-    required this.isUnread,
-  });
-
-  MessageItem copyWith({
-    String? name,
-    String? role,
-    String? task,
-    String? time,
-    String? preview,
-    String? image,
-    String? status,
-    int? unreadCount,
-    bool? isUnread,
-  }) {
-    return MessageItem(
-      name: name ?? this.name,
-      role: role ?? this.role,
-      task: task ?? this.task,
-      time: time ?? this.time,
-      preview: preview ?? this.preview,
-      image: image ?? this.image,
-      status: status ?? this.status,
-      unreadCount: unreadCount ?? this.unreadCount,
-      isUnread: isUnread ?? this.isUnread,
-    );
-  }
-}
-
 class RequesterBottomNav extends StatelessWidget {
   final String active;
 
   const RequesterBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
-  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
@@ -839,9 +806,7 @@ class RequesterBottomNav extends StatelessWidget {
                 activeIcon: Icons.home_rounded,
                 label: 'Home',
                 isActive: active == 'home',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/home');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/home'),
               ),
             ),
             Expanded(
@@ -850,9 +815,7 @@ class RequesterBottomNav extends StatelessWidget {
                 activeIcon: Icons.grid_view_rounded,
                 label: 'Services',
                 isActive: active == 'services',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/servicehub');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/servicehub'),
               ),
             ),
             Expanded(
@@ -861,9 +824,7 @@ class RequesterBottomNav extends StatelessWidget {
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
                 isActive: active == 'messages',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/messages');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/messages'),
               ),
             ),
             Expanded(
@@ -872,9 +833,7 @@ class RequesterBottomNav extends StatelessWidget {
                 activeIcon: Icons.assignment_rounded,
                 label: 'Activity',
                 isActive: active == 'activity',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/activity');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/activity'),
               ),
             ),
             Expanded(
@@ -883,9 +842,7 @@ class RequesterBottomNav extends StatelessWidget {
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
                 isActive: active == 'profile',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/profile');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
               ),
             ),
           ],
@@ -895,7 +852,7 @@ class RequesterBottomNav extends StatelessWidget {
   }
 }
 
-class NavItem extends StatelessWidget {
+class NavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -911,44 +868,62 @@ class NavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<NavItem> {
   static const Color navy = Color(0xFF003C56);
-  static const Color inactive = Color(0xFF94A3B8);
+  bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isActive ? navy : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? Colors.white : inactive,
-              size: 21,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactive,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 1,
+    final bool highlighted = widget.isActive || _isHovering;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        hoverColor: navy.withOpacity(0.08),
+        splashColor: navy.withOpacity(0.12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : _isHovering
+                    ? navy.withOpacity(0.08)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                highlighted ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : navy,
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : navy,
+                  fontSize: 10,
+                  fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

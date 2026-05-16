@@ -1,325 +1,397 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class ReviewPayPage extends StatelessWidget {
+import 'services/errand_service.dart';
+
+class ReviewPayPage extends StatefulWidget {
   const ReviewPayPage({super.key});
 
+  @override
+  State<ReviewPayPage> createState() => _ReviewPayPageState();
+}
+
+class _ReviewPayPageState extends State<ReviewPayPage> {
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
-  static const Color darkText = Color(0xFF191C1E);
   static const Color bodyText = Color(0xFF536167);
-  static const Color green = Color(0xFF004035);
+  static const Color borderColor = Color(0xFFE0E7EC);
+
+  bool _isPaying = false;
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _loadErrand() async {
+    final ref = await ErrandService.latestRequesterErrand(
+      allowedStatuses: {
+        'pending_payment',
+        'posted',
+        'paid',
+        'booked',
+        'booked_paid',
+      },
+    );
+    return ref?.get();
+  }
+
+  Future<void> _pay() async {
+    setState(() => _isPaying = true);
+    try {
+      await ErrandService.payLatestRequesterErrand();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment secured. Errand is now visible to runner(s).'),
+        ),
+      );
+      Navigator.pushReplacementNamed(context, '/payment');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Payment failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isPaying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 86, 24, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'TRANSACTION REVIEW',
-                      style: TextStyle(
-                        color: bodyText,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Secure your errand stewardship.',
-                      style: TextStyle(
-                        color: navy,
-                        fontSize: 38,
-                        fontWeight: FontWeight.w800,
-                        height: 1.18,
-                      ),
-                    ),
+        child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+          future: _loadErrand(),
+          builder: (context, snapshot) {
+            final data = snapshot.data?.data();
+            final hasErrand = data != null;
+            final title = (data?['serviceType'] ?? 'No active errand')
+                .toString();
+            final address = (data?['serviceAddress'] ?? 'Post an errand first')
+                .toString();
+            final runner = (data?['runnerName'] ?? 'No runner selected yet')
+                .toString();
+            final budget = (data?['budget'] ?? data?['pay'] ?? '₱0').toString();
+            final paymentStatus = (data?['paymentStatus'] ?? 'unpaid')
+                .toString();
 
-                    const SizedBox(height: 24),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: navy,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 32),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFB1EFDE),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'PREMIUM LOGISTICS',
-                              style: TextStyle(
-                                color: Color(0xFF00201A),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'PICKUP',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.70),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const Text(
-                            'Whole Foods Market',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'DELIVERY',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.70),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const Text(
-                            '15 Central Park West',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.only(top: 16),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(
-                                  color: Colors.white.withOpacity(0.12),
+                          Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () => Navigator.pop(context),
+                              child: const SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: Icon(
+                                  Icons.arrow_back_rounded,
+                                  color: navy,
                                 ),
                               ),
                             ),
-                            child: const Text(
-                              'Estimated Arrival: 45 - 60 mins',
-                              style: TextStyle(
-                                color: Color(0xFFC7E7FF),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
                           ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F3F7),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Financial Summary',
-                            style: TextStyle(
-                              color: navy,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          const SummaryRow(
-                            label: 'Errand Items Total',
-                            value: '\$42.50',
-                          ),
-                          const SizedBox(height: 10),
-                          const SummaryRow(
-                            label: 'Service Stewardship Fee',
-                            value: '\$5.00',
-                          ),
-                          const SizedBox(height: 12),
-                          Divider(
-                            color: const Color(0xFFC0C7CE).withOpacity(0.33),
-                            height: 1,
-                          ),
-                          const SizedBox(height: 12),
-                          const SummaryRow(
-                            label: 'Total Investment',
-                            value: '\$47.50',
-                            isTotal: true,
-                          ),
-                          const SizedBox(height: 4),
-                          const Align(
-                            alignment: Alignment.centerRight,
+                          const SizedBox(width: 12),
+                          const Expanded(
                             child: Text(
-                              'HELD IN ESCROW',
+                              'Review & Pay',
                               style: TextStyle(
-                                color: green,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
+                                color: navy,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD8DADD).withOpacity(0.30),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Architectural Escrow Protection',
-                            style: TextStyle(
-                              color: navy,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
+                      const SizedBox(height: 18),
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40),
+                            child: CircularProgressIndicator(),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Funds are only released once delivery stewardship is confirmed by you.',
-                            style: TextStyle(
-                              color: bodyText,
-                              fontSize: 10,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              navy,
-                              teal,
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: navy.withOpacity(0.20),
-                              blurRadius: 48,
-                              offset: const Offset(0, 24),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              Navigator.pushNamed(context, '/payment');
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.all(18),
-                              child: Text(
-                                'Pay & Secure Errand',
+                        )
+                      else if (!hasErrand)
+                        _Panel(
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.receipt_long_outlined,
+                                color: navy,
+                                size: 44,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No errand to pay',
+                                style: TextStyle(
+                                  color: navy,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Please post an errand before opening payment.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
+                                  color: bodyText,
+                                  fontSize: 13,
+                                  height: 1.4,
                                 ),
                               ),
+                              const SizedBox(height: 18),
+                              _GradientButton(
+                                label: 'Post Errand',
+                                onTap: () => Navigator.pushReplacementNamed(
+                                  context,
+                                  '/servicehub',
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
+                            gradient: const LinearGradient(
+                              colors: [navy, teal],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
                           ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'ERRAND SUMMARY',
+                                style: TextStyle(
+                                  color: Color(0xFFBFE7F4),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _WhiteInfo(
+                                label: 'SERVICE LOCATION',
+                                value: address,
+                              ),
+                              const SizedBox(height: 12),
+                              _WhiteInfo(label: 'RUNNER', value: runner),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                        const SizedBox(height: 16),
+                        _Panel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Payment Summary',
+                                style: TextStyle(
+                                  color: navy,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              _SummaryRow(label: 'Errand fee', value: budget),
+                              const SizedBox(height: 10),
+                              const _SummaryRow(
+                                label: 'Platform fee',
+                                value: '₱0',
+                              ),
+                              const Divider(height: 26),
+                              _SummaryRow(
+                                label: 'Total',
+                                value: budget,
+                                bold: true,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Status: ${paymentStatus.toUpperCase()}',
+                                style: const TextStyle(
+                                  color: bodyText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _GradientButton(
+                          label: _isPaying
+                              ? 'Processing Payment...'
+                              : 'Pay & Publish Errand',
+                          onTap: _isPaying ? null : _pay,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class SummaryRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isTotal;
-
-  const SummaryRow({
-    super.key,
-    required this.label,
-    required this.value,
-    this.isTotal = false,
-  });
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color bodyText = Color(0xFF536167);
+class _Panel extends StatelessWidget {
+  final Widget child;
+  const _Panel({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _ReviewPayPageState.borderColor),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _WhiteInfo extends StatelessWidget {
+  final String label;
+  final String value;
+  const _WhiteInfo({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: isTotal ? navy : bodyText,
-            fontSize: 14,
-            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .7,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool bold;
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: _ReviewPayPageState.bodyText,
+              fontSize: 14,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
+            ),
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: navy,
-            fontSize: isTotal ? 34 : 16,
-            fontWeight: isTotal ? FontWeight.w800 : FontWeight.w800,
+            color: _ReviewPayPageState.navy,
+            fontSize: bold ? 18 : 15,
+            fontWeight: FontWeight.w900,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  const _GradientButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [_ReviewPayPageState.navy, _ReviewPayPageState.teal],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _ReviewPayPageState.navy.withValues(alpha: 0.20),
+              blurRadius: 28,
+              offset: const Offset(0, 14),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(17),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

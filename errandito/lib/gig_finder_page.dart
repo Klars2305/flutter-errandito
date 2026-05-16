@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'services/errand_service.dart';
+import 'services/auth_service.dart';
 
 class GigFinderJobListingsPage extends StatefulWidget {
   const GigFinderJobListingsPage({super.key});
@@ -15,70 +20,13 @@ class _GigFinderJobListingsPageState extends State<GigFinderJobListingsPage> {
   final TextEditingController searchController = TextEditingController();
 
   static const Color background = Color(0xFFF8F9FD);
-  static const Color navy = Color(0xFF003C56);
 
-  final List<GigItem> gigs = const [
-    GigItem(
-      icon: Icons.restaurant_rounded,
-      filter: 'Food',
-      category: 'Food / Pasabuy',
-      title: 'Meal Pickup',
-      requester: 'Mia Santos',
-      pickup: 'Jollibee Panabo',
-      dropoff: 'Boarding House Area',
-      time: 'ASAP',
-      pay: '₱75',
-    ),
-    GigItem(
-      icon: Icons.school_outlined,
-      filter: 'School',
-      category: 'School Supplies',
-      title: 'Buy School Supplies',
-      requester: 'Ralph Dela Cruz',
-      pickup: 'Nearest Bookstore',
-      dropoff: 'Panabo Campus',
-      time: 'Before 4:00 PM',
-      pay: '₱55',
-    ),
-    GigItem(
-      icon: Icons.print_outlined,
-      filter: 'Printing',
-      category: 'Printing / Documents',
-      title: 'Print Project Files',
-      requester: 'John Reyes',
-      pickup: 'PrintHub Panabo',
-      dropoff: 'Panabo Campus Gate',
-      time: 'Today, 1:45 PM',
-      pay: '₱60',
-    ),
-    GigItem(
-      icon: Icons.local_shipping_outlined,
-      filter: 'Parcel',
-      category: 'Parcel Pickup',
-      title: 'Courier Parcel Pickup',
-      requester: 'Ella Cruz',
-      pickup: 'JRS Panabo',
-      dropoff: 'DNSC Dormitory',
-      time: 'Today, 2:30 PM',
-      pay: '₱90',
-    ),
-    GigItem(
-      icon: Icons.local_laundry_service_outlined,
-      filter: 'Laundry',
-      category: 'Laundry Pickup',
-      title: 'Laundry Pickup and Return',
-      requester: 'Ana Corpuz',
-      pickup: 'Panabo City Center',
-      dropoff: 'Laundry Hub',
-      time: 'Before 5:00 PM',
-      pay: '₱80',
-    ),
-  ];
+  final List<GigItem> sampleGigs = const [];
 
-  List<GigItem> get filteredGigs {
+  List<GigItem> _filterGigs(List<GigItem> source) {
     final String query = searchQuery.trim().toLowerCase();
 
-    return gigs.where((gig) {
+    return source.where((gig) {
       final bool matchesCategory =
           selectedCategory == 'All' || gig.filter == selectedCategory;
 
@@ -95,6 +43,161 @@ class _GigFinderJobListingsPageState extends State<GigFinderJobListingsPage> {
 
       return matchesCategory && matchesSearch;
     }).toList();
+  }
+
+  List<GigItem> _fromErrandDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final String? runnerId = AuthService.currentUserId;
+
+    return docs
+        .where((doc) {
+          final data = doc.data();
+          final String status = (data['status'] ?? '').toString();
+          final String paymentStatus = (data['paymentStatus'] ?? '').toString();
+          final String? assignedRunnerId = data['runnerId']?.toString();
+
+          final bool isPaidVisible =
+              paymentStatus == 'paid' &&
+              (status == 'paid' ||
+                  status == 'booked_paid' ||
+                  status == 'posted');
+          final bool isForThisRunner =
+              assignedRunnerId == null ||
+              assignedRunnerId.isEmpty ||
+              assignedRunnerId == runnerId;
+
+          return isPaidVisible && isForThisRunner;
+        })
+        .map((doc) => GigItem.fromFirestore(doc))
+        .toList();
+  }
+
+  void showRunnerNotifications() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE6E9EF),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Runner Notifications',
+                  style: TextStyle(
+                    color: Color(0xFF003C56),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: ErrandService.currentUserNotificationsStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(18),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    final docs = snapshot.data?.docs ?? [];
+                    if (docs.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 18),
+                        child: Text(
+                          'No new booking notifications yet.',
+                          style: TextStyle(
+                            color: Color(0xFF71787E),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: docs.map((doc) {
+                        final data = doc.data();
+                        return Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FD),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE6E9EF)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF003C56),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_active_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      (data['title'] ?? 'You got booked')
+                                          .toString(),
+                                      style: const TextStyle(
+                                        color: Color(0xFF003C56),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      (data['body'] ?? '').toString(),
+                                      style: const TextStyle(
+                                        color: Color(0xFF40484E),
+                                        fontSize: 12,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -224,7 +327,7 @@ class _GigFinderJobListingsPageState extends State<GigFinderJobListingsPage> {
                         onProfileTap: () {
                           Navigator.pushNamed(context, '/profile');
                         },
-                        onNotificationTap: () {},
+                        onNotificationTap: showRunnerNotifications,
                       ),
 
                       const SizedBox(height: 18),
@@ -264,10 +367,39 @@ class _GigFinderJobListingsPageState extends State<GigFinderJobListingsPage> {
 
                       const SizedBox(height: 16),
 
-                      GigList(
-                        gigs: filteredGigs,
-                        selectedCategory: selectedCategory,
-                        searchQuery: searchQuery,
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: ErrandService.openErrandsStream(),
+                        builder: (context, snapshot) {
+                          final List<GigItem> allGigs = snapshot.hasData
+                              ? _fromErrandDocs(snapshot.data!.docs)
+                              : <GigItem>[];
+
+                          if (snapshot.hasError) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Could not load live errands: ${snapshot.error}',
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                EmptyGigState(
+                                  selectedCategory: selectedCategory,
+                                  searchQuery: searchQuery,
+                                ),
+                              ],
+                            );
+                          }
+
+                          return GigList(
+                            gigs: _filterGigs(allGigs),
+                            selectedCategory: selectedCategory,
+                            searchQuery: searchQuery,
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -320,7 +452,7 @@ class RunnerHeader extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: navy.withOpacity(0.10),
+                    color: navy.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Icon(
@@ -371,7 +503,7 @@ class RunnerHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
           decoration: BoxDecoration(
-            color: teal.withOpacity(0.10),
+            color: teal.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(999),
           ),
           child: const Row(
@@ -440,7 +572,7 @@ class RunnerHeroSummary extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: navy.withOpacity(0.14),
+            color: navy.withValues(alpha: 0.14),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -466,9 +598,9 @@ class RunnerHeroSummary extends StatelessWidget {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    navy.withOpacity(0.96),
-                    navy.withOpacity(0.82),
-                    teal.withOpacity(0.58),
+                    navy.withValues(alpha: 0.96),
+                    navy.withValues(alpha: 0.82),
+                    teal.withValues(alpha: 0.58),
                   ],
                 ),
               ),
@@ -480,7 +612,7 @@ class RunnerHeroSummary extends StatelessWidget {
             top: -18,
             child: Icon(
               Icons.delivery_dining_rounded,
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
               size: 118,
             ),
           ),
@@ -493,7 +625,7 @@ class RunnerHeroSummary extends StatelessWidget {
                 Text(
                   'Today’s Earnings',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.80),
+                    color: Colors.white.withValues(alpha: 0.80),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -558,7 +690,7 @@ class SummaryMetric extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.74),
+            color: Colors.white.withValues(alpha: 0.74),
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
           ),
@@ -891,7 +1023,7 @@ class GigCard extends StatelessWidget {
             border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.025),
+                color: Colors.black.withValues(alpha: 0.025),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -905,7 +1037,7 @@ class GigCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: navy.withOpacity(0.08),
+                      color: navy.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(gig.icon, color: navy, size: 24),
@@ -975,12 +1107,12 @@ class GigCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: teal.withOpacity(0.10),
+                          color: teal.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: const Text(
-                          'Open',
-                          style: TextStyle(
+                        child: Text(
+                          gig.fromRequesterPost ? 'LIVE' : 'Open',
+                          style: const TextStyle(
                             color: teal,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w900,
@@ -1034,8 +1166,65 @@ class GigCard extends StatelessWidget {
                     child: PrimaryActionButton(
                       label: 'Accept',
                       icon: Icons.check_rounded,
-                      onTap: () {
-                        Navigator.pushNamed(context, '/execution-status');
+                      onTap: () async {
+                        if (gig.errandId != null) {
+                          try {
+                            await ErrandService.acceptErrand(
+                              errandId: gig.errandId!,
+                            );
+
+                            final serviceEnabled =
+                                await Geolocator.isLocationServiceEnabled();
+                            if (serviceEnabled) {
+                              LocationPermission permission =
+                                  await Geolocator.checkPermission();
+                              if (permission == LocationPermission.denied) {
+                                permission =
+                                    await Geolocator.requestPermission();
+                              }
+
+                              if (permission != LocationPermission.denied &&
+                                  permission !=
+                                      LocationPermission.deniedForever) {
+                                final position =
+                                    await Geolocator.getCurrentPosition(
+                                      locationSettings: const LocationSettings(
+                                        accuracy: LocationAccuracy.high,
+                                      ),
+                                    );
+
+                                await ErrandService.updateRunnerLocation(
+                                  errandId: gig.errandId!,
+                                  lat: position.latitude,
+                                  lng: position.longitude,
+                                );
+                              }
+                            }
+
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Errand accepted. Requester has been notified.',
+                                ),
+                              ),
+                            );
+                            Navigator.pushNamed(
+                              context,
+                              '/execution-status',
+                              arguments: gig.errandId!,
+                            );
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to accept errand: $e'),
+                              ),
+                            );
+                          }
+                        } else {
+                          Navigator.pushNamed(context, '/execution-status');
+                        }
                       },
                     ),
                   ),
@@ -1215,6 +1404,8 @@ class GigItem {
   final String dropoff;
   final String time;
   final String pay;
+  final String? errandId;
+  final bool fromRequesterPost;
 
   const GigItem({
     required this.icon,
@@ -1226,7 +1417,32 @@ class GigItem {
     required this.dropoff,
     required this.time,
     required this.pay,
+    this.errandId,
+    this.fromRequesterPost = false,
   });
+
+  factory GigItem.fromFirestore(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final Map<String, dynamic> data = doc.data();
+    return GigItem(
+      icon: Icons.local_shipping_outlined,
+      filter: (data['filter'] ?? 'Grocery').toString(),
+      category: (data['category'] ?? data['serviceType'] ?? 'Posted Errand')
+          .toString(),
+      title: (data['title'] ?? data['serviceType'] ?? 'Requester Errand')
+          .toString(),
+      requester: (data['requesterName'] ?? 'Requester').toString(),
+      pickup: (data['pickup'] ?? data['serviceAddress'] ?? 'Panabo City')
+          .toString(),
+      dropoff: (data['dropoff'] ?? data['serviceAddress'] ?? 'Panabo City')
+          .toString(),
+      time: (data['timeSlot'] ?? data['preferredDate'] ?? 'ASAP').toString(),
+      pay: (data['pay'] ?? data['budget'] ?? '₱120').toString(),
+      errandId: doc.id,
+      fromRequesterPost: true,
+    );
+  }
 }
 
 class RunnerBottomNav extends StatelessWidget {
@@ -1246,11 +1462,11 @@ class RunnerBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.96),
+          color: Colors.white.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
