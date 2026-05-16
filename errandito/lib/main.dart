@@ -1,5 +1,9 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+// main.dart
 import 'package:flutter/material.dart';
-
+//import 'package:firebase_core/firebase_core.dart';
+//import 'package:firebase_core/firebase_core.dart';
 import 'account_created.dart';
 import 'activity_planner.dart';
 import 'booking_details.dart';
@@ -23,11 +27,16 @@ import 'select_helper_page.dart';
 import 'sign_up_screen_page.dart';
 import 'steward_wallet_budget_allocated_page.dart';
 import 'task_complete_page.dart';
+//import 'package:firebase_core/firebase_core.dart';
+//import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const ErrandditoApp());
 }
-
 class ErrandditoApp extends StatelessWidget {
   const ErrandditoApp({super.key});
 
@@ -98,8 +107,9 @@ class ErrandditoApp extends StatelessWidget {
         // with another imported file.
         '/message': (context) => const messages.MessagesPage(),
         '/messages': (context) => const messages.MessagesPage(),
+        '/runner-message': (context) => const CoordinationPage(),
+        '/runner-messages': (context) => const CoordinationPage(),
         '/chat': (context) => const messages.MessagesPage(),
-        '/coordination': (context) => const CoordinationChatPage(),
 
         // Tracking / Completion
         '/live-tracking': (context) => const LiveTrackingPage(),
@@ -109,8 +119,8 @@ class ErrandditoApp extends StatelessWidget {
 
         // Runner Flow
         '/gig-finder': (context) => const GigFinderJobListingsPage(),
-        '/runner-home': (context) => const GigFinderJobListingsPage(),
-        '/runner-dashboard': (context) => const GigFinderJobListingsPage(),
+        '/runner-home': (context) => const ActivityPlannerPage(),
+        '/runner-dashboard': (context) => const ActivityPlannerPage(),
         '/available-errands': (context) => const GigFinderJobListingsPage(),
 
         '/execution-status': (context) => const ExecutionStatusUpdatePage(),
@@ -127,6 +137,10 @@ class ErrandditoApp extends StatelessWidget {
         '/activity': (context) => const LiveTrackingPage(),
 
         // Payment / Wallet
+        '/runner-profile': (context) =>
+            const StewardWalletBudgetAllocatedPage(),
+        '/steward-profile': (context) =>
+            const StewardWalletBudgetAllocatedPage(),
         '/steward-wallet-budget-allocated': (context) =>
             const StewardWalletBudgetAllocatedPage(),
         '/errand-execution-payment': (context) =>
@@ -151,426 +165,171 @@ class ErrandditoApp extends StatelessWidget {
 class AestheticSplashScreen extends StatelessWidget {
   const AestheticSplashScreen({super.key});
 
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-  static const Color background = Color(0xFFF8F9FD);
-  static const Color darkGreen = Color(0xFF004035);
+  // REFERENCE-INSPIRED BLUE / TEAL PALETTE
+  static const Color background = Color(0xFFF4F8F6);
+
+  static const Color navy = Color(0xFF005C7A);
+  static const Color teal = Color(0xFF007A8A);
+
+  static const Color darkGreen = Color(0xFF004F68);
+  static const Color primaryGreen = Color(0xFF006A8A);
+  static const Color softGreen = Color(0xFFE7F5F0);
+
+  static const Color mutedText = Color(0xFF506272);
+  static const Color inactive = Color(0xFF9AA8A3);
+  static const Color borderColor = Color(0xFFE3ECE8);
 
   @override
   Widget build(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
+    final Size screen = MediaQuery.of(context).size;
+    final bool narrow = screen.width < 390;
+    final bool short = screen.height < 760;
 
     return Scaffold(
       backgroundColor: background,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: background,
-            ),
-
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      background,
-                      background.withOpacity(0.0),
-                      navy.withOpacity(0.05),
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/errandito_logo.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: softGreen,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.image_not_supported_outlined,
+                    color: darkGreen,
+                    size: 56,
                   ),
-                ),
-              ),
+                );
+              },
             ),
-
-            Positioned(
-              left: -96,
-              top: -96,
-              child: Container(
-                width: 384,
-                height: 384,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF92CEF6).withOpacity(0.20),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-
-            Positioned(
-              right: -96,
-              bottom: 122,
-              child: Container(
-                width: 320,
-                height: 320,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF95D3C3).withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-
-            Positioned(
-              left: 132,
-              top: 333,
-              child: Container(
-                width: size.width,
-                height: 1,
-                color: navy.withOpacity(0.05),
-              ),
-            ),
-
-            Positioned(
-              left: -91,
-              top: 539,
-              child: Container(
-                width: size.width,
-                height: 1,
-                color: navy.withOpacity(0.05),
-              ),
-            ),
-
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(height: 72),
-
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: navy,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Elite Concierge',
-                          style: TextStyle(
-                            color: navy,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            height: 1.4,
-                            letterSpacing: 4.2,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          height: 128,
-                          child: Image.asset(
-                            'assets/images/ErrandditoLogo.png',
-                            width: 269,
-                            height: 179,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 1,
-                              color: const Color(0xFFC0C7CE).withOpacity(0.40),
-                            ),
-                            const SizedBox(width: 16),
-                            const Flexible(
-                              child: Text(
-                                'Pagod ka na? Errandito na!',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: navy,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Container(
-                              width: 40,
-                              height: 1,
-                              color: const Color(0xFFC0C7CE).withOpacity(0.40),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        Container(
-                          width: 96,
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                teal.withOpacity(0),
-                                teal,
-                                teal.withOpacity(0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    Column(
-                      children: [
-                        const SplashProgressIndicator(),
-
-                        const SizedBox(height: 48),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 448),
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [navy, teal],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF191C1E,
-                                    ).withOpacity(0.12),
-                                    offset: const Offset(0, 24),
-                                    blurRadius: 48,
-                                  ),
-                                ],
-                              ),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 0,
-                                    top: 0,
-                                    child: Container(
-                                      width: 326,
-                                      height: 64,
-                                      color: Colors.white.withOpacity(0.05),
-                                    ),
-                                  ),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(8),
-                                      onTap: () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/onboarding',
-                                        );
-                                      },
-                                      child: const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 32,
-                                          vertical: 20,
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              'Get Started',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                                height: 1.5,
-                                                letterSpacing: 0.8,
-                                              ),
-                                            ),
-                                            SizedBox(width: 12),
-                                            Icon(
-                                              Icons.arrow_forward,
-                                              color: Colors.white,
-                                              size: 18,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 48),
-
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            FeatureText(label: 'Precision'),
-                            SizedBox(width: 40),
-                            FeatureText(label: 'Trust'),
-                            SizedBox(width: 40),
-                            FeatureText(label: 'Speed'),
-                          ],
-                        ),
-
-                        const SizedBox(height: 60),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            IgnorePointer(
-              child: Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: background, width: 32),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class SplashProgressIndicator extends StatelessWidget {
-  const SplashProgressIndicator({super.key});
-
-  static const Color navy = Color(0xFF003C56);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 4,
-          height: 4,
-          decoration: BoxDecoration(
-            color: navy,
-            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        const SizedBox(width: 4),
-        Container(
-          width: 32,
-          height: 4,
-          decoration: BoxDecoration(
-            color: navy.withOpacity(0.20),
-            borderRadius: BorderRadius.circular(2),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: 16,
-              height: 4,
+
+          Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: navy,
-                borderRadius: BorderRadius.circular(2),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    background.withOpacity(0.88),
+                    background,
+                  ],
+                  stops: const [0.0, 0.48, 0.72, 1.0],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Container(
-          width: 4,
-          height: 4,
-          decoration: BoxDecoration(
-            color: navy.withOpacity(0.20),
-            borderRadius: BorderRadius.circular(12),
+
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                narrow ? 24 : 32,
+                16,
+                narrow ? 24 : 32,
+                short ? 22 : 30,
+              ),
+              child: Column(
+                children: [
+                  const Spacer(),
+
+                  Text(
+                    'WELCOME',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: darkGreen,
+                      fontSize: narrow ? 32 : 38,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                      height: 1.0,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    'Pagod ka na ba? Errandito na!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: navy.withOpacity(0.94),
+                      fontSize: narrow ? 13.5 : 14.5,
+                      fontWeight: FontWeight.w700,
+                      fontStyle: FontStyle.italic,
+                      height: 1.25,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    'Errandito helps you with delivery, laundry,\ncleaning, tutoring, printing, and everyday errands.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: mutedText,
+                      fontSize: narrow ? 12 : 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.45,
+                    ),
+                  ),
+
+                  SizedBox(height: short ? 22 : 28),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        gradient: const LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [darkGreen, primaryGreen],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: darkGreen.withOpacity(0.20),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/onboarding',
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          surfaceTintColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: const Text(
+                          'Get Started',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class FeatureText extends StatelessWidget {
-  final String label;
-
-  const FeatureText({super.key, required this.label});
-
-  static const Color mutedText = Color(0xFF71787E);
-  static const Color darkGreen = Color(0xFF004035);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: mutedText,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            height: 1.5,
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          width: 4,
-          height: 4,
-          decoration: BoxDecoration(
-            color: darkGreen,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class PlaceholderPage extends StatelessWidget {
-  final String title;
-
-  const PlaceholderPage({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F9FD),
-        elevation: 0,
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF003C56),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF003C56)),
-      ),
-      body: Center(
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF003C56),
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        ],
       ),
     );
   }

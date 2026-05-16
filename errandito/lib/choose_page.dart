@@ -1,232 +1,262 @@
 import 'package:flutter/material.dart';
+import 'services/auth_service.dart';
 
-class ChoosePage extends StatelessWidget {
+class ChoosePage extends StatefulWidget {
   const ChoosePage({super.key});
 
-  static const Color teal = Color(0xFF005477);
-  static const Color darkText = Color(0xFF191C1E);
-  static const Color subtitleText = Color(0xFF4E616D);
-  static const Color mutedText = Color(0xFF72787E);
+  @override
+  State<ChoosePage> createState() => _ChoosePageState();
+}
+
+class _ChoosePageState extends State<ChoosePage> {
+
+  static const Color backgroundTop = Color(0xFFF8FBFC);
+  static const Color backgroundBottom = Color(0xFFEFF5F7);
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005C7A);
+  static const Color subtitleText = Color(0xFF506272);
+  static const Color mutedText = Color(0xFF7A8790);
+  static const Color borderColor = Color(0xFFDDE7EC);
+
+    Future<void> chooseRequester() async {
+    await AuthService.updateUserRole('requester');
+
+    if (!mounted) return;
+
+    Navigator.pushReplacementNamed(context, '/home-dashboard');
+  }
+
+  Future<void> chooseRunner() async {
+    await AuthService.updateUserRole('runner');
+
+    if (!mounted) return;
+
+    Navigator.pushReplacementNamed(context, '/gig-finder');
+  }
 
   @override
   Widget build(BuildContext context) {
+    final Size screen = MediaQuery.of(context).size;
+    final bool narrow = screen.width <= 390;
+    final bool veryShort = screen.height < 650;
+
     return Scaffold(
+      backgroundColor: backgroundBottom,
       body: Container(
         width: double.infinity,
-        constraints: BoxConstraints(
-          minHeight: MediaQuery.of(context).size.height,
-        ),
+        height: screen.height,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF8F9FA),
-              Color(0xFFE9ECEF),
-            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [backgroundTop, backgroundBottom],
           ),
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: 0,
-              top: 222,
-              child: Container(
-                width: 256,
-                height: 251,
-                decoration: BoxDecoration(
-                  color: teal.withOpacity(0.05),
-                  shape: BoxShape.circle,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                right: -95,
+                top: veryShort ? 145 : 190,
+                child: Container(
+                  width: veryShort ? 190 : 230,
+                  height: veryShort ? 190 : 230,
+                  decoration: BoxDecoration(
+                    color: teal.withOpacity(0.055),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-            ),
 
-            SafeArea(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 114, 24, 66),
-                      child: Center(
+              Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      narrow ? 18 : 22,
+                      6,
+                      narrow ? 18 : 22,
+                      0,
+                    ),
+                    child: const ChooseHeader(),
+                  ),
+
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          narrow ? 20 : 24,
+                          veryShort ? 10 : 18,
+                          narrow ? 20 : 24,
+                          veryShort ? 16 : 22,
+                        ),
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 448),
+                          constraints: const BoxConstraints(maxWidth: 430),
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Column(
-                                children: const [
-                                  SizedBox(
-                                    width: 175,
-                                    child: Text(
-                                      'Your time, redefined.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: teal,
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.w800,
-                                        height: 1.25,
-                                        letterSpacing: -0.9,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  SizedBox(
-                                    width: 320,
-                                    child: Text(
-                                      'The premium errand concierge connecting high-achievers with elite stewards.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: subtitleText,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.625,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                'Choose your role',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: navy,
+                                  fontSize: veryShort
+                                      ? 30
+                                      : narrow
+                                      ? 33
+                                      : 36,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.08,
+                                  letterSpacing: -1.0,
+                                ),
                               ),
 
-                              const SizedBox(height: 40),
+                              SizedBox(height: veryShort ? 10 : 12),
+
+                              Text(
+                                'Start by choosing how you want to use Errandito.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: subtitleText,
+                                  fontSize: veryShort
+                                      ? 12.5
+                                      : narrow
+                                      ? 13.5
+                                      : 14.5,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.45,
+                                ),
+                              ),
+
+                              SizedBox(height: veryShort ? 22 : 28),
 
                               Container(
-                                padding: const EdgeInsets.all(24),
+                                width: double.infinity,
+                                padding: EdgeInsets.all(veryShort ? 14 : 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.70),
-                                  borderRadius: BorderRadius.circular(32),
+                                  color: Colors.white.withOpacity(0.94),
+                                  borderRadius: BorderRadius.circular(30),
                                   border: Border.all(
-                                    color: teal.withOpacity(0.10),
+                                    color: borderColor.withOpacity(0.9),
                                   ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: navy.withOpacity(0.055),
+                                      blurRadius: 24,
+                                      offset: const Offset(0, 14),
+                                    ),
+                                  ],
                                 ),
                                 child: Column(
                                   children: [
-                                    ChooseOptionButton(
-                                      title: 'Become a Requester',
+                                   ChooseOptionButton(
+                                      title: 'Requester',
                                       description:
-                                          'Delegate your tasks to expert runners.',
+                                          'Post errands and get help from nearby runners.',
+                                      icon: Icons.assignment_outlined,
                                       isPrimary: true,
-                                      onTap: () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/home-dashboard',
-                                        );
-                                      },
+                                      compact: veryShort,
+                                      onTap: chooseRequester,
                                     ),
-                                    const SizedBox(height: 16),
-                                    ChooseOptionButton(
-                                      title: 'Join as a Runner',
+
+                                    SizedBox(height: veryShort ? 10 : 12),
+
+                                   ChooseOptionButton(
+                                      title: 'Runner',
                                       description:
-                                          'Monetize your skills as a premium steward.',
+                                          'Accept tasks and help people with local errands.',
+                                      icon: Icons.assignment_turned_in_outlined,
                                       isPrimary: false,
-                                      onTap: () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/gig-finder',
-                                        );
-                                      },
+                                      compact: veryShort,
+                                      onTap: chooseRunner,
                                     ),
-                                    const SizedBox(height: 16),
                                   ],
                                 ),
                               ),
 
-                              const SizedBox(height: 40),
+                              SizedBox(height: veryShort ? 18 : 22),
 
                               const Row(
                                 children: [
                                   Expanded(
                                     child: ChooseFeature(
                                       icon: Icons.verified_outlined,
-                                      label: 'Vetted',
+                                      label: 'Verified',
                                     ),
                                   ),
-                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: ChooseFeature(
+                                      icon: Icons.location_on_outlined,
+                                      label: 'Nearby',
+                                    ),
+                                  ),
                                   Expanded(
                                     child: ChooseFeature(
                                       icon: Icons.payments_outlined,
-                                      label: 'Premium Pay',
-                                    ),
-                                  ),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: ChooseFeature(
-                                      icon: Icons.access_time,
-                                      label: 'Flexibility',
+                                      label: 'Secure',
                                     ),
                                   ),
                                 ],
+                              ),
+
+                              SizedBox(height: veryShort ? 16 : 20),
+
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  "By continuing, you agree to ERRANDITO's Terms of Service and Privacy Policy.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: mutedText,
+                                    fontSize: 10,
+                                    height: 1.45,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
                     ),
-
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(35, 0, 35, 24),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 320),
-                        child: const Text(
-                          "By continuing, you agree to ERRANDITO's Terms of Service & Privacy Policy",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: mutedText,
-                            fontSize: 10,
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            Positioned(
-              left: 0,
-              top: 0,
-              right: 0,
-              child: SafeArea(
-                bottom: false,
-                child: Container(
-                  height: 64,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            Navigator.pop(context);
-                          },
-                          child: const SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: Icon(
-                              Icons.arrow_back,
-                              color: Color.fromRGBO(25, 28, 30, 0.7),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Text(
-                        'ERRANDITO',
-                        style: TextStyle(
-                          color: teal,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3.6,
-                        ),
-                      ),
-                    ],
                   ),
-                ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ChooseHeader extends StatelessWidget {
+  const ChooseHeader({super.key});
+
+  static const Color navy = Color(0xFF003C56);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: Row(
+        children: [
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.pop(context);
+              },
+              child: const SizedBox(
+                width: 34,
+                height: 34,
+                child: Icon(Icons.arrow_back_rounded, color: navy, size: 21),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -235,84 +265,151 @@ class ChoosePage extends StatelessWidget {
 class ChooseOptionButton extends StatelessWidget {
   final String title;
   final String description;
+  final IconData icon;
   final bool isPrimary;
+  final bool compact;
   final VoidCallback onTap;
 
   const ChooseOptionButton({
     super.key,
     required this.title,
     required this.description,
+    required this.icon,
     required this.isPrimary,
+    required this.compact,
     required this.onTap,
   });
 
-  static const Color teal = Color(0xFF005477);
-  static const Color darkText = Color(0xFF191C1E);
-  static const Color subtitleText = Color(0xFF4E616D);
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005C7A);
+  static const Color subtitleText = Color(0xFF506272);
+  static const Color borderColor = Color(0xFFDDE7EC);
 
   @override
   Widget build(BuildContext context) {
-    final Color backgroundColor = isPrimary ? teal : Colors.white;
-    final Color borderColor =
-        isPrimary ? teal : const Color(0xFF72787E).withOpacity(0.20);
-    final Color titleColor = isPrimary ? Colors.white : darkText;
-    final Color descriptionColor =
-        isPrimary ? Colors.white.withOpacity(0.80) : subtitleText;
-    final Color arrowColor = isPrimary ? Colors.white : teal;
+    final bool narrow = MediaQuery.of(context).size.width <= 390;
+
+    final Color titleColor = isPrimary ? Colors.white : navy;
+    final Color descriptionColor = isPrimary
+        ? Colors.white.withOpacity(0.84)
+        : subtitleText;
+    final Color iconColor = isPrimary ? Colors.white : teal;
+    final Color arrowColor = isPrimary ? navy : teal;
+
+    final double iconBoxSize = compact
+        ? 50
+        : narrow
+        ? 56
+        : 60;
+
+    final double arrowBoxSize = compact ? 36 : 40;
 
     return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(24),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(26),
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
         onTap: onTap,
+        borderRadius: BorderRadius.circular(26),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(compact ? 15 : 17),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(26),
+            color: isPrimary ? null : Colors.white,
+            gradient: isPrimary
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [navy, teal],
+                  )
+                : null,
+            border: Border.all(
+              color: isPrimary ? Colors.transparent : borderColor,
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: navy.withOpacity(isPrimary ? 0.13 : 0.035),
+                blurRadius: isPrimary ? 18 : 14,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
+              Container(
+                width: iconBoxSize,
+                height: iconBoxSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isPrimary
+                      ? Colors.white.withOpacity(0.10)
+                      : const Color(0xFFF1F6F8),
+                  border: Border.all(
+                    color: isPrimary
+                        ? Colors.white.withOpacity(0.16)
+                        : borderColor,
+                  ),
+                ),
+                child: Icon(icon, color: iconColor, size: compact ? 24 : 28),
+              ),
+
+              SizedBox(width: compact ? 13 : 15),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: titleColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        height: 1.55,
-                        letterSpacing: -0.45,
+                        fontSize: compact
+                            ? 17
+                            : narrow
+                            ? 18
+                            : 19,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                        letterSpacing: -0.4,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    Icons.arrow_forward,
-                    color: arrowColor,
-                    size: 20,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 240),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    description,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: descriptionColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      height: 1.42,
+
+                    const SizedBox(height: 7),
+
+                    Text(
+                      description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: descriptionColor,
+                        fontSize: compact ? 12 : 12.8,
+                        fontWeight: FontWeight.w500,
+                        height: 1.32,
+                      ),
                     ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              Container(
+                width: arrowBoxSize,
+                height: arrowBoxSize,
+                decoration: BoxDecoration(
+                  color: isPrimary ? Colors.white : const Color(0xFFF5F8FA),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isPrimary ? Colors.white : borderColor,
                   ),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: arrowColor,
+                  size: compact ? 19 : 21,
                 ),
               ),
             ],
@@ -327,43 +424,18 @@ class ChooseFeature extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const ChooseFeature({
-    super.key,
-    required this.icon,
-    required this.label,
-  });
+  const ChooseFeature({super.key, required this.icon, required this.label});
 
-  static const Color teal = Color(0xFF005477);
-  static const Color mutedText = Color(0xFF72787E);
+  static const Color teal = Color(0xFF005C7A);
+  static const Color mutedText = Color(0xFF7A8790);
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: mutedText.withOpacity(0.05),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Icon(
-            icon,
-            color: teal,
-            size: 22,
-          ),
-        ),
-        const SizedBox(height: 8),
+        Icon(icon, color: teal, size: 20),
+        const SizedBox(height: 6),
         Text(
           label,
           textAlign: TextAlign.center,
@@ -371,7 +443,7 @@ class ChooseFeature extends StatelessWidget {
             color: mutedText,
             fontSize: 10,
             fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
+            letterSpacing: 0.35,
           ),
         ),
       ],

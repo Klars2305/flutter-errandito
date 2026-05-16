@@ -212,10 +212,7 @@ class ActivityPlannerPage extends StatelessWidget {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            navy,
-                            teal,
-                          ],
+                          colors: [navy, teal],
                         ),
                       ),
                       child: Material(
@@ -259,10 +256,7 @@ class ActivityPlannerPage extends StatelessWidget {
 class CalendarDay extends StatelessWidget {
   final String label;
 
-  const CalendarDay({
-    super.key,
-    required this.label,
-  });
+  const CalendarDay({super.key, required this.label});
 
   static const Color textColor = Color(0xFF0D2C3A);
 
@@ -334,10 +328,7 @@ class CalendarDateButton extends StatelessWidget {
 class FlowCard extends StatelessWidget {
   final ActivityPlan plan;
 
-  const FlowCard({
-    super.key,
-    required this.plan,
-  });
+  const FlowCard({super.key, required this.plan});
 
   static const Color textColor = Color(0xFF0D2C3A);
 
@@ -402,120 +393,148 @@ class ActivityPlan {
   });
 }
 
-enum ActivityState {
-  done,
-  active,
-  idle,
-}
+enum ActivityState { done, active, idle }
 
 class RunnerBottomNav extends StatelessWidget {
   final String active;
 
-  const RunnerBottomNav({
-    super.key,
-    required this.active,
-  });
+  const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
-  static const Color muted = Color(0xFF71787E);
+  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 78,
-      padding: const EdgeInsets.only(top: 8, bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, -8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          BottomNavItem(
-            icon: Icons.home_outlined,
-            label: 'Home',
-            isActive: active == 'home',
-            onTap: () {
-              Navigator.pushNamed(context, '/activity-planner');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.search_outlined,
-            label: 'Errands',
-            isActive: active == 'errands',
-            onTap: () {
-              Navigator.pushNamed(context, '/gig-finder');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.assignment_outlined,
-            label: 'Status',
-            isActive: active == 'status',
-            onTap: () {
-              Navigator.pushNamed(context, '/execution-status');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.account_balance_wallet_outlined,
-            label: 'Earnings',
-            isActive: active == 'earnings',
-            onTap: () {
-              Navigator.pushNamed(context, '/payment-earnings');
-            },
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      child: Container(
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Home',
+                isActive: active == 'home',
+                onTap: () {
+                  Navigator.pushNamed(context, '/runner-home');
+                },
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.search_outlined,
+                activeIcon: Icons.search_rounded,
+                label: 'Gigs',
+                isActive: active == 'gigs',
+                onTap: () {},
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: 'Tasks',
+                isActive: active == 'tasks',
+                onTap: () {
+                  Navigator.pushNamed(context, '/execution-status');
+                },
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.chat_bubble_outline_rounded,
+                activeIcon: Icons.chat_bubble_rounded,
+                label: 'Messages',
+                isActive: active == 'runner-messages',
+                onTap: () {
+                  Navigator.pushNamed(context, '/runner-messages');
+                },
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profile',
+                isActive: active == 'profile',
+                onTap: () {
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class BottomNavItem extends StatelessWidget {
+class RunnerNavItem extends StatelessWidget {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final bool isActive;
   final VoidCallback onTap;
 
-  const BottomNavItem({
+  const RunnerNavItem({
     super.key,
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.isActive,
     required this.onTap,
   });
 
   static const Color navy = Color(0xFF003C56);
-  static const Color muted = Color(0xFF71787E);
+  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    final Color color = isActive ? navy : muted;
-
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isActive ? navy : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              icon,
-              color: color,
-              size: 24,
+              isActive ? activeIcon : icon,
+              color: isActive ? Colors.white : inactive,
+              size: 21,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: color,
-                fontSize: 11,
+                color: isActive ? Colors.white : inactive,
+                fontSize: 10,
                 fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                height: 1,
               ),
             ),
           ],

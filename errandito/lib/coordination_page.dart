@@ -1,118 +1,255 @@
 import 'package:flutter/material.dart';
-import 'messages_page.dart';
 
-class CoordinationChatPage extends StatefulWidget {
-  const CoordinationChatPage({super.key});
+class CoordinationPage extends StatefulWidget {
+  final bool isRunner;
+
+  const CoordinationPage({super.key, this.isRunner = false});
 
   @override
-  State<CoordinationChatPage> createState() => _CoordinationChatPageState();
+  State<CoordinationPage> createState() => _CoordinationPageState();
 }
 
-class _CoordinationChatPageState extends State<CoordinationChatPage> {
-  final TextEditingController messageController = TextEditingController();
-  final ScrollController scrollController = ScrollController();
+class _CoordinationPageState extends State<CoordinationPage> {
+  String selectedFilter = 'All';
+  String searchQuery = '';
 
-  final List<ChatMessage> messages = [
-    const ChatMessage(
-      text: 'Hi! I accepted your parcel pickup errand.',
-      time: '9:16 AM',
-      isMine: true,
-    ),
-    const ChatMessage(
-      text: 'Thank you! Please pick it up at JRS Panabo.',
-      time: '9:17 AM',
-      isMine: false,
-    ),
-    const ChatMessage(
-      text: 'Got it. Is the parcel already paid?',
-      time: '9:18 AM',
-      isMine: true,
-    ),
-    const ChatMessage(
-      text: 'Yes, it is already paid. Just bring your valid ID.',
-      time: '9:18 AM',
-      isMine: false,
-    ),
-    const ChatMessage(
-      text: 'Okay. I’ll update the task status once I arrive.',
-      time: '9:19 AM',
-      isMine: true,
-    ),
-  ];
+  final TextEditingController searchController = TextEditingController();
+
+  static const Color background = Color(0xFFF8F9FD);
+
+  late List<MessageItem> messages;
+
+  @override
+  void initState() {
+    super.initState();
+
+    messages = const [
+      MessageItem(
+        name: 'Ella Cruz',
+        role: 'Requester',
+        task: 'Courier Parcel Pickup',
+        time: '10:42 PM',
+        preview: 'Can you send a photo once you arrive at JRS?',
+        image: 'assets/images/helper_female.png',
+        status: 'In Progress',
+        unreadCount: 2,
+        isUnread: true,
+      ),
+      MessageItem(
+        name: 'Mia Santos',
+        role: 'Requester',
+        task: 'Meal Pickup',
+        time: '4 hours ago',
+        preview: 'Please check if the drinks are included.',
+        image: 'assets/images/helper.png',
+        status: 'Pending',
+        unreadCount: 1,
+        isUnread: true,
+      ),
+      MessageItem(
+        name: 'John Reyes',
+        role: 'Requester',
+        task: 'Print Project Files',
+        time: '5 hours ago',
+        preview: 'The file is already sent. Please keep the receipt.',
+        image: 'assets/images/steward.png',
+        status: 'Accepted',
+        unreadCount: 0,
+        isUnread: false,
+      ),
+      MessageItem(
+        name: 'Ana Corpuz',
+        role: 'Requester',
+        task: 'Laundry Pickup',
+        time: 'Yesterday',
+        preview: 'Thank you. I received the laundry.',
+        image: 'assets/images/helper_female.png',
+        status: 'Completed',
+        unreadCount: 0,
+        isUnread: false,
+      ),
+      MessageItem(
+        name: 'Ralph Dela Cruz',
+        role: 'Requester',
+        task: 'School Supplies',
+        time: '23/05/2024',
+        preview: 'The notebook and pens are correct.',
+        image: 'assets/images/profile.png',
+        status: 'Completed',
+        unreadCount: 0,
+        isUnread: false,
+      ),
+    ];
+  }
+
+  int get totalUnread {
+    return messages.fold<int>(0, (sum, message) => sum + message.unreadCount);
+  }
+
+  List<MessageItem> get filteredMessages {
+    final String query = searchQuery.trim().toLowerCase();
+
+    return messages.where((message) {
+      final bool matchesFilter =
+          selectedFilter == 'All' ||
+          (selectedFilter == 'Unread' && message.isUnread) ||
+          (selectedFilter == 'Active' && message.status != 'Completed');
+
+      final bool matchesSearch =
+          query.isEmpty ||
+          message.name.toLowerCase().contains(query) ||
+          message.role.toLowerCase().contains(query) ||
+          message.task.toLowerCase().contains(query) ||
+          message.preview.toLowerCase().contains(query) ||
+          message.status.toLowerCase().contains(query);
+
+      return matchesFilter && matchesSearch;
+    }).toList();
+  }
 
   @override
   void dispose() {
-    messageController.dispose();
-    scrollController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
-  void sendMessage() {
-    final String text = messageController.text.trim();
-
-    if (text.isEmpty) {
-      return;
-    }
+  void clearSearch() {
+    searchController.clear();
 
     setState(() {
-      messages.add(ChatMessage(text: text, time: 'Now', isMine: true));
-      messageController.clear();
+      searchQuery = '';
     });
+  }
 
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (scrollController.hasClients) {
-        scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  void goBackNormally() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushReplacementNamed(
+        context,
+        widget.isRunner ? '/runner-home' : '/home-dashboard',
+      );
+    }
+  }
+
+  void openConversation(MessageItem item) {
+    final int index = messages.indexOf(item);
+
+    if (index != -1) {
+      setState(() {
+        messages[index] = item.copyWith(isUnread: false, unreadCount: 0);
+      });
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/coordination',
+      arguments: {
+        'name': item.name,
+        'role': item.role,
+        'task': item.task,
+        'image': item.image,
+        'status': item.status,
+        'isRunner': widget.isRunner,
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final Object? argument = ModalRoute.of(context)?.settings.arguments;
-
-    final MessageItem? conversation = argument is MessageItem ? argument : null;
-
-    final String name = conversation?.name ?? 'Ella Cruz';
-    final String task = conversation?.task ?? 'Courier Parcel Pickup';
-    final String image =
-        conversation?.image ?? 'assets/images/helper_female.png';
-    final String status = conversation?.status ?? 'In Progress';
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool narrowScreen = screenWidth <= 390;
+    final double horizontalPadding = narrowScreen ? 18 : 22;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: background,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            ChatHeader(
-              name: name,
-              image: image,
-              onBackTap: () {
-                Navigator.pop(context);
-              },
-              onStatusTap: () {
-                Navigator.pushNamed(context, '/execution-status');
-              },
-            ),
+            SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                16,
+                horizontalPadding,
+                112,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MessagesHeader(
+                        unreadCount: totalUnread,
+                        onBackTap: goBackNormally,
+                      ),
 
-            TaskContextCard(task: task, status: status),
+                      const SizedBox(height: 18),
 
-            Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                physics: const BouncingScrollPhysics(),
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  return ChatBubble(message: messages[index]);
-                },
+                      MessageSearchBar(
+                        controller: searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            searchQuery = value;
+                          });
+                        },
+                        onClear: clearSearch,
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      MessageFilterChips(
+                        selectedFilter: selectedFilter,
+                        onChanged: (filter) {
+                          setState(() {
+                            selectedFilter = filter;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Errand Conversations',
+                              style: TextStyle(
+                                color: Color(0xFF003C56),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${filteredMessages.length} chats',
+                            style: const TextStyle(
+                              color: Color(0xFF71787E),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      MessageList(
+                        messages: filteredMessages,
+                        onOpenConversation: openConversation,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
 
-            ChatInputBar(controller: messageController, onSend: sendMessage),
+            const Align(
+              alignment: Alignment.bottomCenter,
+              child: RunnerBottomNav(active: 'messages'),
+            ),
           ],
         ),
       ),
@@ -120,294 +257,644 @@ class _CoordinationChatPageState extends State<CoordinationChatPage> {
   }
 }
 
-class ChatHeader extends StatelessWidget {
-  final String name;
-  final String image;
+class MessagesHeader extends StatelessWidget {
+  final int unreadCount;
   final VoidCallback onBackTap;
-  final VoidCallback onStatusTap;
 
-  const ChatHeader({
+  const MessagesHeader({
     super.key,
-    required this.name,
-    required this.image,
+    required this.unreadCount,
     required this.onBackTap,
-    required this.onStatusTap,
+  });
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005477);
+  static const Color borderColor = Color(0xFFE6E9EF);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Material(
+          color: Colors.white,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onBackTap,
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: navy,
+                size: 18,
+              ),
+            ),
+          ),
+        ),
+
+        const Expanded(
+          child: Center(
+            child: Text(
+              'Messages',
+              style: TextStyle(
+                color: navy,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+
+        Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: unreadCount > 0 ? teal : Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: unreadCount > 0 ? teal : borderColor),
+          ),
+          child: Text(
+            '$unreadCount',
+            style: TextStyle(
+              color: unreadCount > 0 ? Colors.white : navy,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class MessageSearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const MessageSearchBar({
+    super.key,
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
   });
 
   static const Color navy = Color(0xFF003C56);
   static const Color mutedText = Color(0xFF71787E);
   static const Color borderColor = Color(0xFFE6E9EF);
-  static const Color teal = Color(0xFF005477);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.only(left: 14, right: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
       child: Row(
         children: [
-          Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onBackTap,
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderColor),
+          const Icon(Icons.search_rounded, color: mutedText, size: 21),
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(
+                color: navy,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: const InputDecoration(
+                hintText: 'Search conversations...',
+                hintStyle: TextStyle(
+                  color: mutedText,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
                 ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: navy,
-                  size: 18,
-                ),
+                border: InputBorder.none,
+                isCollapsed: true,
               ),
             ),
           ),
 
-          const SizedBox(width: 12),
+          if (controller.text.isNotEmpty)
+            IconButton(
+              onPressed: onClear,
+              icon: const Icon(Icons.close_rounded, color: mutedText, size: 19),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(17),
-                child: Image.asset(
-                  image,
-                  width: 44,
-                  height: 44,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 44,
-                      height: 44,
-                      color: navy.withOpacity(0.10),
-                      child: const Icon(Icons.person_rounded, color: navy),
-                    );
-                  },
+class MessageFilterChips extends StatelessWidget {
+  final String selectedFilter;
+  final ValueChanged<String> onChanged;
+
+  const MessageFilterChips({
+    super.key,
+    required this.selectedFilter,
+    required this.onChanged,
+  });
+
+  static const List<String> filters = ['All', 'Unread', 'Active'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: filters.map((filter) {
+        final bool isActive = selectedFilter == filter;
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Material(
+              color: isActive ? const Color(0xFF003C56) : Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              child: InkWell(
+                onTap: () {
+                  onChanged(filter);
+                },
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: isActive
+                          ? const Color(0xFF003C56)
+                          : const Color(0xFFE6E9EF),
+                    ),
+                  ),
+                  child: Text(
+                    filter,
+                    style: TextStyle(
+                      color: isActive ? Colors.white : const Color(0xFF71787E),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
-              Positioned(
-                right: -1,
-                bottom: -1,
-                child: Container(
-                  width: 13,
-                  height: 13,
-                  decoration: BoxDecoration(
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class MessageList extends StatelessWidget {
+  final List<MessageItem> messages;
+  final ValueChanged<MessageItem> onOpenConversation;
+
+  const MessageList({
+    super.key,
+    required this.messages,
+    required this.onOpenConversation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (messages.isEmpty) {
+      return const EmptyMessagesState();
+    }
+
+    return Column(
+      children: messages.map((message) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: MessageTile(
+            item: message,
+            onTap: () {
+              onOpenConversation(message);
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class EmptyMessagesState extends StatelessWidget {
+  const EmptyMessagesState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE6E9EF)),
+      ),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.chat_bubble_outline_rounded,
+            color: Color(0xFF003C56),
+            size: 34,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'No conversations found',
+            style: TextStyle(
+              color: Color(0xFF003C56),
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Try another search or filter.',
+            style: TextStyle(
+              color: Color(0xFF71787E),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MessageTile extends StatelessWidget {
+  final MessageItem item;
+  final VoidCallback onTap;
+
+  const MessageTile({super.key, required this.item, required this.onTap});
+
+  static const Color navy = Color(0xFF003C56);
+  static const Color teal = Color(0xFF005477);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
+
+  @override
+  Widget build(BuildContext context) {
+    final bool unread = item.isUnread && item.unreadCount > 0;
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: unread ? teal.withOpacity(0.42) : borderColor,
+              width: unread ? 1.4 : 1,
+            ),
+            boxShadow: [
+              if (unread)
+                BoxShadow(
+                  color: teal.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+            ],
+          ),
+          child: Row(
+            children: [
+              if (unread)
+                Container(
+                  width: 5,
+                  height: 84,
+                  decoration: const BoxDecoration(
                     color: teal,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(18),
+                    ),
+                  ),
+                ),
+
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(11),
+                  child: Row(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              item.image,
+                              width: 54,
+                              height: 54,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 54,
+                                  height: 54,
+                                  color: navy.withOpacity(0.10),
+                                  child: const Icon(
+                                    Icons.person_rounded,
+                                    color: navy,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          if (item.status != 'Completed')
+                            Positioned(
+                              right: -1,
+                              bottom: -1,
+                              child: Container(
+                                width: 13,
+                                height: 13,
+                                decoration: BoxDecoration(
+                                  color: teal,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: navy,
+                                      fontSize: 14,
+                                      fontWeight: unread
+                                          ? FontWeight.w900
+                                          : FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  item.time,
+                                  style: TextStyle(
+                                    color: unread ? teal : mutedText,
+                                    fontSize: 9.5,
+                                    fontWeight: unread
+                                        ? FontWeight.w900
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 3),
+
+                            Text(
+                              item.task,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: teal,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.preview,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: unread ? navy : mutedText,
+                                      fontSize: 11.2,
+                                      fontWeight: unread
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 8),
+
+                                if (unread)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: teal,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      '${item.unreadCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.done_all_rounded,
+                                    color: teal,
+                                    size: 15,
+                                  ),
+                              ],
+                            ),
+
+                            if (unread) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: teal.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'UNREAD',
+                                  style: TextStyle(
+                                    color: teal,
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(width: 11),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: navy,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Requester • Active now',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: mutedText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onStatusTap,
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderColor),
-                ),
-                child: const Icon(
-                  Icons.receipt_long_outlined,
-                  color: navy,
-                  size: 22,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class TaskContextCard extends StatelessWidget {
+class MessageItem {
+  final String name;
+  final String role;
   final String task;
+  final String time;
+  final String preview;
+  final String image;
   final String status;
+  final int unreadCount;
+  final bool isUnread;
 
-  const TaskContextCard({super.key, required this.task, required this.status});
+  const MessageItem({
+    required this.name,
+    required this.role,
+    required this.task,
+    required this.time,
+    required this.preview,
+    required this.image,
+    required this.status,
+    required this.unreadCount,
+    required this.isUnread,
+  });
 
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-  static const Color mutedText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE6E9EF);
-
-  @override
-  Widget build(BuildContext context) {
-    final bool completed = status.toLowerCase() == 'completed';
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(18, 4, 18, 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: navy.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.local_shipping_outlined,
-              color: navy,
-              size: 21,
-            ),
-          ),
-
-          const SizedBox(width: 11),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: navy,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                const Text(
-                  'Coordinate pickup, changes, and delivery updates.',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: mutedText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: teal.withOpacity(completed ? 0.06 : 0.10),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              completed ? 'Done' : 'Active',
-              style: const TextStyle(
-                color: teal,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
+  MessageItem copyWith({
+    String? name,
+    String? role,
+    String? task,
+    String? time,
+    String? preview,
+    String? image,
+    String? status,
+    int? unreadCount,
+    bool? isUnread,
+  }) {
+    return MessageItem(
+      name: name ?? this.name,
+      role: role ?? this.role,
+      task: task ?? this.task,
+      time: time ?? this.time,
+      preview: preview ?? this.preview,
+      image: image ?? this.image,
+      status: status ?? this.status,
+      unreadCount: unreadCount ?? this.unreadCount,
+      isUnread: isUnread ?? this.isUnread,
     );
   }
 }
 
-class ChatBubble extends StatelessWidget {
-  final ChatMessage message;
+class RunnerBottomNav extends StatelessWidget {
+  final String active;
 
-  const ChatBubble({super.key, required this.message});
+  const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
-  static const Color mutedText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE6E9EF);
+  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    final bool isMine = message.isMine;
-
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: isMine
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      child: Container(
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: 286),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color: isMine ? navy : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isMine ? 18 : 4),
-                  bottomRight: Radius.circular(isMine ? 4 : 18),
-                ),
-                border: isMine ? null : Border.all(color: borderColor),
-              ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: isMine ? Colors.white : navy,
-                  fontSize: 12.5,
-                  height: 1.35,
-                  fontWeight: FontWeight.w600,
-                ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Home',
+                isActive: active == 'home',
+                onTap: () {
+                  Navigator.pushNamed(context, '/runner-home');
+                },
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              message.time,
-              style: const TextStyle(
-                color: mutedText,
-                fontSize: 9.5,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.search_outlined,
+                activeIcon: Icons.search_rounded,
+                label: 'Gigs',
+                isActive: active == 'gigs',
+                onTap: () {},
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: 'Tasks',
+                isActive: active == 'tasks',
+                onTap: () {
+                  Navigator.pushNamed(context, '/execution-status');
+                },
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.chat_bubble_outline_rounded,
+                activeIcon: Icons.chat_bubble_rounded,
+                label: 'Messages',
+                isActive: active == 'runner-messages',
+                onTap: () {
+                  Navigator.pushNamed(context, '/runner-messages');
+                },
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profile',
+                isActive: active == 'profile',
+                onTap: () {
+                  Navigator.pushNamed(context, '/profile');
+                },
               ),
             ),
           ],
@@ -417,107 +904,62 @@ class ChatBubble extends StatelessWidget {
   }
 }
 
-class ChatInputBar extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
+class RunnerNavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
 
-  const ChatInputBar({
+  const RunnerNavItem({
     super.key,
-    required this.controller,
-    required this.onSend,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
   });
 
   static const Color navy = Color(0xFF003C56);
-  static const Color mutedText = Color(0xFF71787E);
-  static const Color borderColor = Color(0xFFE6E9EF);
+  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(18, 8, 18, 14),
-      child: Row(
-        children: [
-          Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: () {},
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderColor),
-                ),
-                child: const Icon(Icons.add_rounded, color: navy, size: 24),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isActive ? navy : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isActive ? activeIcon : icon,
+              color: isActive ? Colors.white : inactive,
+              size: 21,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isActive ? Colors.white : inactive,
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                height: 1,
               ),
             ),
-          ),
-
-          const SizedBox(width: 10),
-
-          Expanded(
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: borderColor),
-              ),
-              child: TextField(
-                controller: controller,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
-                style: const TextStyle(
-                  color: navy,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: TextStyle(
-                    color: mutedText,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          Material(
-            color: navy,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onSend,
-              customBorder: const CircleBorder(),
-              child: const SizedBox(
-                width: 46,
-                height: 46,
-                child: Icon(Icons.send_rounded, color: Colors.white, size: 21),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-class ChatMessage {
-  final String text;
-  final String time;
-  final bool isMine;
-
-  const ChatMessage({
-    required this.text,
-    required this.time,
-    required this.isMine,
-  });
 }

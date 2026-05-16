@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/auth_service.dart';
 
 class AccountCreatedPage extends StatelessWidget {
   const AccountCreatedPage({super.key});
@@ -247,6 +249,14 @@ class ProfileMainCard extends StatelessWidget {
   static const Color mutedText = Color(0xFF71787E);
   static const Color cardBorder = Color(0xFFE6E9EF);
 
+  Future<void> _logout(BuildContext context) async {
+    await AuthService.signOut();
+
+    if (!context.mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -269,32 +279,101 @@ class ProfileMainCard extends StatelessWidget {
         children: [
           const ProfileAvatar(),
           const SizedBox(height: 12),
-          const Text(
-            'Bronny James',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: navy,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.2,
-            ),
+
+          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: AuthService.currentUserStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Column(
+                  children: [
+                    Text(
+                      'Loading...',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: navy,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              if (!snapshot.hasData || !snapshot.data!.exists) {
+                return const Column(
+                  children: [
+                    Text(
+                      'User',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: navy,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'No email found',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: mutedText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              final Map<String, dynamic>? data = snapshot.data!.data();
+
+              final String fullName = data?['fullName'] ?? 'User';
+              final String email = data?['email'] ?? '';
+              final String role = data?['role'] ?? '';
+
+              return Column(
+                children: [
+                  Text(
+                    fullName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: navy,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: mutedText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    role == 'runner' ? 'Runner' : 'Requester',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: mutedText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'bronny@example.com',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: mutedText,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
+
+          const SizedBox(height: 10),
+
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: teal.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(999),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -312,11 +391,13 @@ class ProfileMainCard extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(height: 20),
           const ProfileStatsRow(),
           const SizedBox(height: 20),
           const SectionTitle(title: 'Account'),
           const SizedBox(height: 10),
+
           ProfileOptionTile(
             icon: Icons.badge_outlined,
             title: 'Identity Verification',
@@ -325,7 +406,9 @@ class ProfileMainCard extends StatelessWidget {
               Navigator.pushNamed(context, '/identity');
             },
           ),
+
           const SizedBox(height: 10),
+
           ProfileOptionTile(
             icon: Icons.receipt_long_outlined,
             title: 'My Errands',
@@ -334,7 +417,9 @@ class ProfileMainCard extends StatelessWidget {
               Navigator.pushNamed(context, '/task-complete');
             },
           ),
+
           const SizedBox(height: 10),
+
           ProfileOptionTile(
             icon: Icons.star_border_rounded,
             title: 'Ratings & Reviews',
@@ -343,9 +428,11 @@ class ProfileMainCard extends StatelessWidget {
               Navigator.pushNamed(context, '/task-complete');
             },
           ),
+
           const SizedBox(height: 18),
           const SectionTitle(title: 'Settings'),
           const SizedBox(height: 10),
+
           ProfileOptionTile(
             icon: Icons.workspace_premium_outlined,
             title: 'Premium Plan',
@@ -354,21 +441,25 @@ class ProfileMainCard extends StatelessWidget {
               Navigator.pushNamed(context, '/reviewpay');
             },
           ),
+
           const SizedBox(height: 10),
+
           ProfileOptionTile(
             icon: Icons.help_outline_rounded,
             title: 'Help Centre',
             subtitle: 'Get support for errands, payments, and safety.',
             onTap: () {},
           ),
+
           const SizedBox(height: 10),
+
           ProfileOptionTile(
             icon: Icons.logout_rounded,
             title: 'Logout',
             subtitle: 'Sign out of your account.',
             isDestructive: true,
             onTap: () {
-              Navigator.pushNamed(context, '/login');
+              _logout(context);
             },
           ),
         ],

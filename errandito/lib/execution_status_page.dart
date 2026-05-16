@@ -858,9 +858,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.search_rounded,
                 label: 'Gigs',
                 isActive: active == 'gigs',
-                onTap: () {
-                  Navigator.pushNamed(context, '/gig-finder');
-                },
+                onTap: () {},
               ),
             ),
             Expanded(
@@ -869,7 +867,9 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.receipt_long_rounded,
                 label: 'Tasks',
                 isActive: active == 'tasks',
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushNamed(context, '/execution-status');
+                },
               ),
             ),
             Expanded(
@@ -877,9 +877,9 @@ class RunnerBottomNav extends StatelessWidget {
                 icon: Icons.chat_bubble_outline_rounded,
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
-                isActive: active == 'messages',
+                isActive: active == 'runner-messages',
                 onTap: () {
-                  Navigator.pushNamed(context, '/message');
+                  Navigator.pushNamed(context, '/runner-messages');
                 },
               ),
             ),

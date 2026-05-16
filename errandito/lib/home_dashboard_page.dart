@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/auth_service.dart';
 
 class HomeDashboardPage extends StatelessWidget {
   const HomeDashboardPage({super.key});
@@ -260,19 +262,30 @@ class HomeHeroHeader extends StatelessWidget {
                         ],
                       ),
 
-                      const Spacer(),
+StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: AuthService.currentUserStream(),
+                        builder: (context, snapshot) {
+                          String firstName = 'User';
 
-                      Text(
-                        'Hello, Bronny',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
-                          letterSpacing: -0.5,
-                        ),
+                          if (snapshot.hasData && snapshot.data!.exists) {
+                            final data = snapshot.data!.data();
+                            final String fullName = data?['fullName'] ?? 'User';
+
+                            firstName = fullName.trim().isEmpty
+                                ? 'User'
+                                : fullName.trim().split(' ').first;
+                          }
+
+                          return Text(
+                            'Hello, $firstName',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.8,
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 8),

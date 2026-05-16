@@ -12,30 +12,34 @@ class _OnboardingWalkthroughPageState extends State<OnboardingWalkthroughPage> {
   final PageController _controller = PageController();
   int _currentPage = 0;
 
-  static const Color background = Color(0xFFF4F5F8);
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-  static const Color muted = Color(0xFF71787E);
-  static const Color accent = Color(0xFFFFB84D);
+  // REFERENCE-INSPIRED BLUE / TEAL PALETTE
+  static const Color background = Color(0xFFF4F8F6);
+  static const Color navy = Color(0xFF005C7A);
 
   final List<OnboardingItem> items = const [
     OnboardingItem(
-      icon: Icons.add_home_work_rounded,
-      title: 'Post errands near you',
+      image: 'assets/images/onboarding_post_errand.png',
+      title: 'Post errands easily',
       description:
-          'Need help with food, parcels, laundry, printing, or school needs? Create a request in just a few taps.',
+          'Request help for food, parcels, laundry, printing, school needs, and everyday tasks in just a few taps.',
+      imageWidthFactor: 1.02,
+      imageOffsetY: 0,
     ),
     OnboardingItem(
-      icon: Icons.delivery_dining_rounded,
-      title: 'Choose a trusted runner',
+      image: 'assets/images/onboarding_choose_service.png',
+      title: 'Choose the right service',
       description:
-          'ERRANDITO helps you connect with available runners who can handle your task safely and quickly.',
+          'Browse food, laundry, parcel, cleaning, school, and printing help, then match with a trusted runner.',
+      imageWidthFactor: 0.88,
+      imageOffsetY: -34,
     ),
     OnboardingItem(
-      icon: Icons.route_rounded,
-      title: 'Track until it is done',
+      image: 'assets/images/onboarding_track_errand.png',
+      title: 'Track every errand',
       description:
-          'Chat, receive status updates, confirm delivery, and complete your errand smoothly from one app.',
+          'Get updates, chat with your runner, follow progress, and confirm completion smoothly.',
+      imageWidthFactor: 0.96,
+      imageOffsetY: -14,
     ),
   ];
 
@@ -52,7 +56,7 @@ class _OnboardingWalkthroughPageState extends State<OnboardingWalkthroughPage> {
     }
 
     _controller.nextPage(
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 280),
       curve: Curves.easeOut,
     );
   }
@@ -61,439 +65,293 @@ class _OnboardingWalkthroughPageState extends State<OnboardingWalkthroughPage> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  void _previous() {
-    if (_currentPage == 0) {
-      Navigator.pop(context);
-      return;
-    }
-
-    _controller.previousPage(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOut,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final Size screen = MediaQuery.of(context).size;
     final bool shortScreen = screen.height < 740;
+    final bool narrowScreen = screen.width < 390;
 
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(
-        child: Stack(
-          children: [
-            const Positioned(
-              top: 34,
-              right: 42,
-              child: SoftDot(size: 8, opacity: 0.55),
-            ),
-            const Positioned(
-              left: 32,
-              top: 154,
-              child: SoftDot(size: 16, opacity: 0.35),
-            ),
-            const Positioned(
-              right: 24,
-              bottom: 112,
-              child: SoftDot(size: 22, opacity: 0.35),
-            ),
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _controller,
+                  itemCount: items.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    return OnboardingScreenContent(
+                      item: items[index],
+                      currentIndex: _currentPage,
+                      totalCount: items.length,
+                      shortScreen: shortScreen,
+                      narrowScreen: narrowScreen,
+                      onNext: _next,
+                    );
+                  },
+                ),
 
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
-                  child: Container(
-                    width: double.infinity,
-                    height: shortScreen ? 600 : 660,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(34),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 34,
-                          offset: const Offset(0, 18),
-                        ),
-                      ],
+                Positioned(
+                  top: 16,
+                  right: 22,
+                  child: TextButton(
+                    onPressed: _skip,
+                    style: TextButton.styleFrom(
+                      foregroundColor: navy,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      overlayColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(34),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  onPressed: _previous,
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    size: 18,
-                                    color: navy,
-                                  ),
-                                ),
-                                const Spacer(),
-                                TextButton(
-                                  onPressed: _skip,
-                                  child: Text(
-                                    _currentPage == items.length - 1
-                                        ? 'DONE'
-                                        : 'SKIP',
-                                    style: const TextStyle(
-                                      color: muted,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.6,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          Expanded(
-                            child: PageView.builder(
-                              controller: _controller,
-                              itemCount: items.length,
-                              onPageChanged: (index) {
-                                setState(() {
-                                  _currentPage = index;
-                                });
-                              },
-                              itemBuilder: (context, index) {
-                                return OnboardingSlide(
-                                  item: items[index],
-                                  shortScreen: shortScreen,
-                                );
-                              },
-                            ),
-                          ),
-
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(28, 0, 28, 22),
-                            child: Row(
-                              children: [
-                                TextButton(
-                                  onPressed: _skip,
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: Text(
-                                    _currentPage == items.length - 1
-                                        ? 'DONE'
-                                        : 'SKIP',
-                                    style: const TextStyle(
-                                      color: muted,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.7,
-                                    ),
-                                  ),
-                                ),
-
-                                const Spacer(),
-
-                                OnboardingDots(
-                                  count: items.length,
-                                  currentIndex: _currentPage,
-                                ),
-
-                                const Spacer(),
-
-                                Material(
-                                  color: accent,
-                                  shape: const CircleBorder(),
-                                  child: InkWell(
-                                    onTap: _next,
-                                    customBorder: const CircleBorder(),
-                                    child: const SizedBox(
-                                      width: 52,
-                                      height: 52,
-                                      child: Icon(
-                                        Icons.arrow_forward_rounded,
-                                        color: Colors.white,
-                                        size: 22,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    child: Text(
+                      _currentPage == items.length - 1 ? 'Done' : 'Skip',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class OnboardingSlide extends StatelessWidget {
-  final OnboardingItem item;
-  final bool shortScreen;
-
-  const OnboardingSlide({
-    super.key,
-    required this.item,
-    required this.shortScreen,
-  });
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-  static const Color muted = Color(0xFF71787E);
-  static const Color softYellow = Color(0xFFFFF4C8);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 6, 28, 0),
-      child: Column(
-        children: [
-          SizedBox(height: shortScreen ? 18 : 34),
-
-          SizedBox(
-            height: shortScreen ? 230 : 275,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: shortScreen ? 168 : 200,
-                  height: shortScreen ? 168 : 200,
-                  decoration: const BoxDecoration(
-                    color: softYellow,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-
-                Positioned(
-                  top: shortScreen ? 16 : 28,
-                  child: Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: navy.withOpacity(0.08),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(item.icon, color: teal, size: 31),
-                  ),
-                ),
-
-                Positioned(
-                  bottom: shortScreen ? 18 : 26,
-                  child: ErrandIllustration(icon: item.icon),
-                ),
               ],
             ),
           ),
-
-          SizedBox(height: shortScreen ? 18 : 26),
-
-          Text(
-            item.title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: navy,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              height: 1.2,
-              letterSpacing: -0.2,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          Text(
-            item.description,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: muted,
-              fontSize: 12.5,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class ErrandIllustration extends StatelessWidget {
-  final IconData icon;
+class OnboardingScreenContent extends StatelessWidget {
+  final OnboardingItem item;
+  final int currentIndex;
+  final int totalCount;
+  final bool shortScreen;
+  final bool narrowScreen;
+  final VoidCallback onNext;
 
-  const ErrandIllustration({super.key, required this.icon});
+  const OnboardingScreenContent({
+    super.key,
+    required this.item,
+    required this.currentIndex,
+    required this.totalCount,
+    required this.shortScreen,
+    required this.narrowScreen,
+    required this.onNext,
+  });
 
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-  static const Color accent = Color(0xFFFFB84D);
+  // REFERENCE-INSPIRED BLUE / TEAL PALETTE
+  static const Color navy = Color(0xFF005C7A);
+  static const Color deepTeal = Color(0xFF004F68);
+  static const Color teal = Color(0xFF006A8A);
+  static const Color muted = Color(0xFF506272);
+  static const Color background = Color(0xFFF4F8F6);
+  static const Color softGreen = Color(0xFFE7F5F0);
 
   @override
   Widget build(BuildContext context) {
-    if (icon == Icons.add_home_work_rounded) {
-      return SizedBox(
-        width: 150,
-        height: 135,
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            Container(
-              width: 104,
-              height: 84,
-              decoration: BoxDecoration(
-                color: teal.withOpacity(0.86),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            Positioned(
-              top: 24,
-              child: Icon(Icons.location_on_rounded, color: accent, size: 54),
-            ),
-            Positioned(
-              bottom: 22,
-              child: Container(
-                width: 28,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.82),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 48,
-              right: 42,
-              child: Icon(
-                Icons.window_rounded,
-                color: Colors.white.withOpacity(0.82),
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final double imageTop = shortScreen ? 42 : 52;
+    final double imageHeight = shortScreen ? 375 : 445;
+    final double panelHeight = shortScreen ? 292 : 338;
 
-    if (icon == Icons.delivery_dining_rounded) {
-      return SizedBox(
-        width: 170,
-        height: 130,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(
-              bottom: 22,
-              child: Icon(
-                Icons.delivery_dining_rounded,
-                color: teal,
-                size: 104,
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [softGreen, background, teal.withOpacity(0.08)],
               ),
             ),
-            Positioned(
-              top: 6,
-              left: 38,
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.92),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.inventory_2_rounded,
-                  color: Colors.white,
-                  size: 23,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
-    }
 
-    return SizedBox(
-      width: 162,
-      height: 134,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 82,
-            height: 126,
+        Positioned(
+          left: -90,
+          top: 100,
+          child: SoftCircle(size: 220, color: teal.withOpacity(0.08)),
+        ),
+
+        Positioned(
+          right: -90,
+          bottom: 82,
+          child: SoftCircle(size: 235, color: deepTeal.withOpacity(0.07)),
+        ),
+
+        Positioned(
+          top: imageTop,
+          left: 0,
+          right: 0,
+          child: SizedBox(
+            height: imageHeight,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: narrowScreen ? 8 : 12),
+              child: Transform.translate(
+                offset: Offset(0, item.imageOffsetY),
+                child: FractionallySizedBox(
+                  widthFactor: item.imageWidthFactor,
+                  child: Image.asset(
+                    item.image,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.center,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          color: navy,
+                          size: 52,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            height: panelHeight,
+            padding: EdgeInsets.fromLTRB(
+              narrowScreen ? 26 : 34,
+              shortScreen ? 34 : 42,
+              narrowScreen ? 26 : 34,
+              28,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: navy.withOpacity(0.18), width: 2),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(42),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: navy.withOpacity(0.08),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  blurRadius: 30,
+                  offset: const Offset(0, -12),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Text(
+                  item.title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: navy,
+                    fontSize: narrowScreen ? 30 : 32,
+                    fontWeight: FontWeight.w900,
+                    height: 1.12,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Text(
+                  item.description,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: muted,
+                    fontSize: narrowScreen ? 15 : 16,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+
+                const Spacer(),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    OnboardingDots(
+                      count: totalCount,
+                      currentIndex: currentIndex,
+                    ),
+
+                    const Spacer(),
+
+                    CleanOnboardingButton(
+                      label: currentIndex == totalCount - 1 ? 'Start' : 'Next',
+                      onTap: onNext,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Positioned(
-            top: 30,
-            child: Container(
-              width: 48,
-              height: 8,
-              decoration: BoxDecoration(
-                color: teal.withOpacity(0.22),
-                borderRadius: BorderRadius.circular(99),
-              ),
+        ),
+      ],
+    );
+  }
+}
+
+class CleanOnboardingButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const CleanOnboardingButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+  });
+
+  // REFERENCE-INSPIRED BLUE / TEAL PALETTE
+  static const Color deepTeal = Color(0xFF004F68);
+  static const Color teal = Color(0xFF006A8A);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 56,
+        constraints: const BoxConstraints(minWidth: 118),
+        padding: const EdgeInsets.symmetric(horizontal: 34),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [deepTeal, teal],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: deepTeal.withOpacity(0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            height: 1.2,
           ),
-          Positioned(
-            top: 48,
-            child: Container(
-              width: 48,
-              height: 8,
-              decoration: BoxDecoration(
-                color: teal.withOpacity(0.22),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 30,
-            child: Icon(Icons.route_rounded, color: teal, size: 42),
-          ),
-          Positioned(
-            left: 18,
-            top: 38,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                color: accent,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.navigation_rounded,
-                color: Colors.white,
-                size: 23,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -509,8 +367,9 @@ class OnboardingDots extends StatelessWidget {
     required this.currentIndex,
   });
 
-  static const Color accent = Color(0xFFFFB84D);
-  static const Color inactive = Color(0xFFD8DDE3);
+  // REFERENCE-INSPIRED BLUE / TEAL PALETTE
+  static const Color teal = Color(0xFF006A8A);
+  static const Color inactive = Color(0xFFE3ECE8);
 
   @override
   Widget build(BuildContext context) {
@@ -521,12 +380,12 @@ class OnboardingDots extends StatelessWidget {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: active ? 18 : 5,
-          height: 5,
+          margin: const EdgeInsets.only(right: 12),
+          width: 14,
+          height: 14,
           decoration: BoxDecoration(
-            color: active ? accent : inactive,
-            borderRadius: BorderRadius.circular(99),
+            color: active ? teal : inactive,
+            shape: BoxShape.circle,
           ),
         );
       }),
@@ -534,33 +393,34 @@ class OnboardingDots extends StatelessWidget {
   }
 }
 
-class SoftDot extends StatelessWidget {
+class SoftCircle extends StatelessWidget {
   final double size;
-  final double opacity;
+  final Color color;
 
-  const SoftDot({super.key, required this.size, required this.opacity});
+  const SoftCircle({super.key, required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(opacity),
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
 
 class OnboardingItem {
-  final IconData icon;
+  final String image;
   final String title;
   final String description;
+  final double imageWidthFactor;
+  final double imageOffsetY;
 
   const OnboardingItem({
-    required this.icon,
+    required this.image,
     required this.title,
     required this.description,
+    this.imageWidthFactor = 1.0,
+    this.imageOffsetY = 0,
   });
 }

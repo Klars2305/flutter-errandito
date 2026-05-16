@@ -1294,9 +1294,9 @@ class RunnerBottomNav extends StatelessWidget {
                 icon: Icons.chat_bubble_outline_rounded,
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
-                isActive: active == 'messages',
+                isActive: active == 'runner-messages',
                 onTap: () {
-                  Navigator.pushNamed(context, '/execution-messaging');
+                  Navigator.pushNamed(context, '/runner-messages');
                 },
               ),
             ),

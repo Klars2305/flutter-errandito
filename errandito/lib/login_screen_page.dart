@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import 'services/auth_service.dart';
 
 class LoginScreenPage extends StatefulWidget {
   const LoginScreenPage({super.key});
@@ -11,8 +14,25 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  bool obscurePassword = true;
+  String _firebaseErrorMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return error.message ?? 'Login failed. Please try again.';
+    }
+  }
 
+  bool obscurePassword = true;
+  bool isLoading = false;
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
@@ -21,21 +41,80 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
   static const Color borderColor = Color(0xFFE0E4EA);
   static const Color divider = Color(0xFFE1E2E6);
 
-  void signIn() {
-    Navigator.pushNamed(context, '/choose');
+Future<void> signIn() async {
+    final String email = emailController.text.trim();
+    final String password = passwordController.text;
 
-    // Later, when role selection is ready:
-    // Navigator.pushNamed(context, '/role-selection');
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email and password.')),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      await AuthService.signIn(email: email, password: password);
+
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(context, '/choose');
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_firebaseErrorMessage(error))));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   void goToSignUp() {
     Navigator.pushNamed(context, '/signup');
   }
+  
 
-  void forgotPassword() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Forgot password screen coming soon.')),
-    );
+ Future<void> forgotPassword() async {
+    final String email = emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter your email first.')));
+      return;
+    }
+
+    try {
+      await AuthService.sendPasswordResetEmail(email);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset email sent.')),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_firebaseErrorMessage(error))));
+    }
   }
 
   @override
@@ -48,16 +127,38 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
   @override
   Widget build(BuildContext context) {
     final Size screen = MediaQuery.of(context).size;
-    final bool shortScreen = screen.height < 720;
-    final bool veryShortScreen = screen.height < 640;
+
+    final bool veryShortScreen = screen.height < 650;
+    final bool shortScreen = screen.height < 740;
     final bool narrowScreen = screen.width <= 390;
 
     final double horizontalPadding = narrowScreen ? 18 : 24;
-    final double cardPadding = veryShortScreen ? 20 : 24;
-    final double logoSize = veryShortScreen ? 44 : 50;
-    final double titleSize = veryShortScreen ? 25 : 28;
-    final double inputHeight = veryShortScreen ? 52 : 56;
-    final double buttonHeight = veryShortScreen ? 52 : 56;
+    final double pageVerticalPadding = veryShortScreen ? 8 : 14;
+
+    final double cardPadding = veryShortScreen
+        ? 16
+        : shortScreen
+        ? 18
+        : 22;
+
+    final double logoSize = veryShortScreen
+        ? 64
+        : shortScreen
+        ? 76
+        : 86;
+
+    final double titleSize = veryShortScreen
+        ? 24
+        : shortScreen
+        ? 26
+        : 28;
+
+    final double inputHeight = veryShortScreen ? 48 : 52;
+    final double buttonHeight = veryShortScreen ? 48 : 52;
+
+    final double sectionGapSmall = veryShortScreen ? 6 : 8;
+    final double sectionGapMedium = veryShortScreen ? 10 : 14;
+    final double sectionGapLarge = veryShortScreen ? 14 : 18;
 
     return Scaffold(
       backgroundColor: background,
@@ -69,11 +170,11 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
               physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.symmetric(
                 horizontal: horizontalPadding,
-                vertical: shortScreen ? 12 : 20,
+                vertical: pageVerticalPadding,
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - (shortScreen ? 24 : 40),
+                  minHeight: constraints.maxHeight - (pageVerticalPadding * 2),
                 ),
                 child: Center(
                   child: Column(
@@ -89,40 +190,31 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                           boxShadow: [
                             BoxShadow(
                               color: darkText.withOpacity(0.045),
-                              blurRadius: 32,
-                              offset: const Offset(0, 18),
+                              blurRadius: 28,
+                              offset: const Offset(0, 14),
                             ),
                           ],
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
+                            SizedBox(
                               width: logoSize,
                               height: logoSize,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [navy, teal],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: navy.withOpacity(0.14),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.delivery_dining_rounded,
-                                color: Colors.white,
-                                size: veryShortScreen ? 23 : 26,
+                              child: Image.asset(
+                                'assets/images/ErrandditoLogo.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.delivery_dining_rounded,
+                                    color: navy,
+                                    size: veryShortScreen ? 34 : 42,
+                                  );
+                                },
                               ),
                             ),
 
-                            SizedBox(height: veryShortScreen ? 14 : 18),
+                            SizedBox(height: veryShortScreen ? 8 : 12),
 
                             Text(
                               'Sign In',
@@ -131,25 +223,25 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                                 color: navy,
                                 fontSize: titleSize,
                                 fontWeight: FontWeight.w800,
-                                height: 1.1,
+                                height: 1.05,
                                 letterSpacing: -0.4,
                               ),
                             ),
 
-                            SizedBox(height: veryShortScreen ? 6 : 8),
+                            SizedBox(height: sectionGapSmall),
 
                             Text(
                               'To sign in to your ERRANDITO account,\nenter your email and password.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: softText,
-                                fontSize: veryShortScreen ? 12.5 : 13.5,
-                                height: 1.35,
+                                fontSize: veryShortScreen ? 11.8 : 13,
+                                height: 1.3,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
 
-                            SizedBox(height: veryShortScreen ? 18 : 24),
+                            SizedBox(height: sectionGapLarge),
 
                             LoginInputField(
                               controller: emailController,
@@ -159,7 +251,7 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                               keyboardType: TextInputType.emailAddress,
                             ),
 
-                            SizedBox(height: veryShortScreen ? 10 : 12),
+                            SizedBox(height: sectionGapMedium),
 
                             LoginInputField(
                               controller: passwordController,
@@ -169,6 +261,7 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                               obscureText: obscurePassword,
                               suffixIcon: IconButton(
                                 visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
                                 onPressed: () {
                                   setState(() {
                                     obscurePassword = !obscurePassword;
@@ -179,12 +272,12 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
                                   color: softText,
-                                  size: 19,
+                                  size: 18,
                                 ),
                               ),
                             ),
 
-                            SizedBox(height: veryShortScreen ? 7 : 9),
+                            SizedBox(height: veryShortScreen ? 4 : 6),
 
                             TextButton(
                               onPressed: forgotPassword,
@@ -194,34 +287,34 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
-                                  vertical: 5,
+                                  vertical: 4,
                                 ),
                               ),
                               child: Text(
                                 'Forgot password?',
                                 style: TextStyle(
                                   color: navy,
-                                  fontSize: veryShortScreen ? 12.5 : 13,
+                                  fontSize: veryShortScreen ? 12 : 12.5,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
 
-                            SizedBox(height: veryShortScreen ? 10 : 13),
+                            SizedBox(height: veryShortScreen ? 8 : 10),
 
-                            GradientMainButton(
-                              label: 'Continue',
+                           GradientMainButton(
+                              label: isLoading ? 'Signing In...' : 'Sign In',
                               height: buttonHeight,
-                              onTap: signIn,
+                              onTap: isLoading ? () {} : signIn,
                             ),
 
-                            SizedBox(height: veryShortScreen ? 17 : 20),
+                            SizedBox(height: veryShortScreen ? 14 : 16),
 
                             const DividerWithText(
                               text: "Don't have an account yet?",
                             ),
 
-                            SizedBox(height: veryShortScreen ? 12 : 15),
+                            SizedBox(height: veryShortScreen ? 10 : 12),
 
                             FullSoftButton(
                               label: 'Create an account',
@@ -229,7 +322,7 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                               onTap: goToSignUp,
                             ),
 
-                            SizedBox(height: veryShortScreen ? 16 : 20),
+                            SizedBox(height: veryShortScreen ? 12 : 16),
 
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -239,13 +332,13 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                                   tooltip: 'Sign in with Facebook',
                                   onTap: signIn,
                                 ),
-                                const SizedBox(width: 28),
+                                const SizedBox(width: 24),
                                 MinimalSocialIcon(
                                   icon: Icons.apple_rounded,
                                   tooltip: 'Sign in with Apple',
                                   onTap: signIn,
                                 ),
-                                const SizedBox(width: 28),
+                                const SizedBox(width: 24),
                                 MinimalSocialIcon(
                                   icon: Icons.g_mobiledata_rounded,
                                   tooltip: 'Sign in with Google',
@@ -258,7 +351,7 @@ class _LoginScreenPageState extends State<LoginScreenPage> {
                         ),
                       ),
 
-                      SizedBox(height: veryShortScreen ? 12 : 16),
+                      SizedBox(height: veryShortScreen ? 8 : 12),
 
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
@@ -314,7 +407,7 @@ class LoginInputField extends StatelessWidget {
         keyboardType: keyboardType,
         style: const TextStyle(
           color: Color(0xFF191C1E),
-          fontSize: 15,
+          fontSize: 14.5,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
@@ -322,10 +415,10 @@ class LoginInputField extends StatelessWidget {
           hintText: hintText,
           hintStyle: const TextStyle(
             color: softText,
-            fontSize: 15,
+            fontSize: 14.5,
             fontWeight: FontWeight.w400,
           ),
-          prefixIcon: Icon(icon, color: softText, size: 20),
+          prefixIcon: Icon(icon, color: softText, size: 19),
           prefixIconConstraints: BoxConstraints(
             minWidth: 48,
             minHeight: height,
@@ -384,7 +477,7 @@ class GradientMainButton extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.1,
                 ),
@@ -432,7 +525,7 @@ class FullSoftButton extends StatelessWidget {
               label,
               style: const TextStyle(
                 color: navy,
-                fontSize: 15,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -467,10 +560,10 @@ class MinimalSocialIcon extends StatelessWidget {
         onTap: onTap,
         radius: 20,
         child: SizedBox(
-          width: 34,
-          height: 34,
+          width: 32,
+          height: 32,
           child: Center(
-            child: Icon(icon, color: iconColor, size: isGoogle ? 30 : 22),
+            child: Icon(icon, color: iconColor, size: isGoogle ? 28 : 21),
           ),
         ),
       ),
@@ -492,12 +585,12 @@ class DividerWithText extends StatelessWidget {
       children: [
         const Expanded(child: Divider(color: divider, thickness: 1, height: 1)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 9),
           child: Text(
             text,
             style: const TextStyle(
               color: softText,
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -521,8 +614,8 @@ class TermsText extends StatelessWidget {
       text: const TextSpan(
         style: TextStyle(
           color: softText,
-          fontSize: 11.5,
-          height: 1.35,
+          fontSize: 10.8,
+          height: 1.3,
           fontWeight: FontWeight.w400,
         ),
         children: [

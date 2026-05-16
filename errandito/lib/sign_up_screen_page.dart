@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import 'services/auth_service.dart';
 
 class SignUpScreenPage extends StatefulWidget {
   const SignUpScreenPage({super.key});
@@ -8,13 +11,34 @@ class SignUpScreenPage extends StatefulWidget {
 }
 
 class _SignUpScreenPageState extends State<SignUpScreenPage> {
+  
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
+  
+  bool isLoading = false;
   bool obscurePassword = true;
   bool agreedToTerms = false;
+
+  void goToLogin() {
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+  
+  String _firebaseErrorMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'email-already-in-use':
+        return 'This email is already registered.';
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'weak-password':
+        return 'Password is too weak.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return error.message ?? 'Authentication failed. Please try again.';
+    }
+  }
 
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
@@ -22,8 +46,40 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
   static const Color darkText = Color(0xFF191C1E);
   static const Color softText = Color(0xFF71787E);
   static const Color borderColor = Color(0xFFE0E4EA);
+  static const Color divider = Color(0xFFE1E2E6);
 
-  void createAccount() {
+  Future<void> createAccount() async {
+    final String fullName = nameController.text.trim();
+    final String email = emailController.text.trim();
+    final String phone = phoneController.text.trim();
+    final String password = passwordController.text;
+
+    if (fullName.isEmpty ||
+        email.isEmpty ||
+        phone.isEmpty ||
+        password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields.')),
+      );
+      return;
+    }
+
+    if (!email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address.')),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password must be at least 6 characters.'),
+        ),
+      );
+      return;
+    }
+
     if (!agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -33,14 +89,42 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
       return;
     }
 
-    Navigator.pushNamed(context, '/identity');
+    setState(() {
+      isLoading = true;
+    });
 
-    // Later, when role selection is ready:
-    // Navigator.pushNamed(context, '/role-selection');
-  }
+    try {
+      await AuthService.signUp(
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        password: password,
+      );
 
-  void goToLogin() {
-    Navigator.pushNamed(context, '/login');
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(context, '/identity');
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_firebaseErrorMessage(error))));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -55,16 +139,34 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
   @override
   Widget build(BuildContext context) {
     final Size screen = MediaQuery.of(context).size;
+
+    final bool veryShortScreen = screen.height < 680;
     final bool shortScreen = screen.height < 760;
-    final bool veryShortScreen = screen.height < 670;
     final bool narrowScreen = screen.width <= 390;
 
     final double horizontalPadding = narrowScreen ? 18 : 24;
-    final double cardPadding = veryShortScreen ? 20 : 24;
-    final double logoSize = veryShortScreen ? 44 : 50;
-    final double titleSize = veryShortScreen ? 24 : 28;
-    final double inputHeight = veryShortScreen ? 50 : 54;
-    final double buttonHeight = veryShortScreen ? 52 : 56;
+    final double pageVerticalPadding = veryShortScreen ? 8 : 14;
+
+    final double cardPadding = veryShortScreen
+        ? 16
+        : shortScreen
+        ? 18
+        : 22;
+
+    final double logoSize = veryShortScreen
+        ? 72
+        : shortScreen
+        ? 84
+        : 96;
+
+    final double titleSize = veryShortScreen
+        ? 23
+        : shortScreen
+        ? 25
+        : 27;
+
+    final double inputHeight = veryShortScreen ? 47 : 51;
+    final double buttonHeight = veryShortScreen ? 48 : 52;
 
     return Scaffold(
       backgroundColor: background,
@@ -76,11 +178,11 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
               physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.symmetric(
                 horizontal: horizontalPadding,
-                vertical: shortScreen ? 12 : 20,
+                vertical: pageVerticalPadding,
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - (shortScreen ? 24 : 40),
+                  minHeight: constraints.maxHeight - (pageVerticalPadding * 2),
                 ),
                 child: Center(
                   child: Container(
@@ -93,20 +195,31 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
                       boxShadow: [
                         BoxShadow(
                           color: darkText.withOpacity(0.045),
-                          blurRadius: 32,
-                          offset: const Offset(0, 18),
+                          blurRadius: 28,
+                          offset: const Offset(0, 14),
                         ),
                       ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AppLogo(
-                          size: logoSize,
-                          iconSize: veryShortScreen ? 22 : 25,
+                        SizedBox(
+                          width: logoSize,
+                          height: logoSize,
+                          child: Image.asset(
+                            'assets/images/ErrandditoLogo.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.delivery_dining_rounded,
+                                color: navy,
+                                size: veryShortScreen ? 36 : 44,
+                              );
+                            },
+                          ),
                         ),
 
-                        SizedBox(height: veryShortScreen ? 13 : 17),
+                        SizedBox(height: veryShortScreen ? 8 : 12),
 
                         Text(
                           'Create Account',
@@ -115,7 +228,7 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
                             color: navy,
                             fontSize: titleSize,
                             fontWeight: FontWeight.w800,
-                            height: 1.1,
+                            height: 1.08,
                             letterSpacing: -0.4,
                           ),
                         ),
@@ -127,13 +240,13 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: softText,
-                            fontSize: veryShortScreen ? 12.5 : 13.5,
-                            height: 1.35,
+                            fontSize: veryShortScreen ? 11.8 : 13,
+                            height: 1.3,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
 
-                        SizedBox(height: veryShortScreen ? 16 : 22),
+                        SizedBox(height: veryShortScreen ? 14 : 18),
 
                         SignUpInputField(
                           controller: nameController,
@@ -176,6 +289,7 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
                           textInputAction: TextInputAction.done,
                           suffixIcon: IconButton(
                             visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
                             onPressed: () {
                               setState(() {
                                 obscurePassword = !obscurePassword;
@@ -186,12 +300,12 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
                               color: softText,
-                              size: 19,
+                              size: 18,
                             ),
                           ),
                         ),
 
-                        SizedBox(height: veryShortScreen ? 12 : 15),
+                        SizedBox(height: veryShortScreen ? 10 : 12),
 
                         TermsCheckRow(
                           value: agreedToTerms,
@@ -204,15 +318,35 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
 
                         SizedBox(height: veryShortScreen ? 14 : 18),
 
-                        GradientMainButton(
-                          label: 'Create Account',
+                       GradientMainButton(
+                          label: isLoading
+                              ? 'Creating Account...'
+                              : 'Create Account',
                           height: buttonHeight,
-                          onTap: createAccount,
+                          onTap: isLoading ? () {} : createAccount,
                         ),
 
-                        SizedBox(height: veryShortScreen ? 16 : 20),
+                        SizedBox(height: veryShortScreen ? 14 : 18),
 
-                        LoginPrompt(onTap: goToLogin),
+                        const DividerWithText(text: 'Already have an account?'),
+
+                        SizedBox(height: veryShortScreen ? 10 : 12),
+
+                        TextButton(
+                          onPressed: goToLogin,
+                          style: TextButton.styleFrom(
+                            foregroundColor: navy,
+                            minimumSize: const Size.fromHeight(36),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                          ),
+                          child: const Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -221,44 +355,6 @@ class _SignUpScreenPageState extends State<SignUpScreenPage> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class AppLogo extends StatelessWidget {
-  final double size;
-  final double iconSize;
-
-  const AppLogo({super.key, required this.size, required this.iconSize});
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color teal = Color(0xFF005477);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [navy, teal],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: navy.withOpacity(0.14),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Icon(
-        Icons.person_add_alt_1_rounded,
-        color: Colors.white,
-        size: iconSize,
       ),
     );
   }
@@ -305,7 +401,7 @@ class SignUpInputField extends StatelessWidget {
         textInputAction: textInputAction,
         style: const TextStyle(
           color: Color(0xFF191C1E),
-          fontSize: 15,
+          fontSize: 14.5,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
@@ -313,10 +409,10 @@ class SignUpInputField extends StatelessWidget {
           hintText: hintText,
           hintStyle: const TextStyle(
             color: softText,
-            fontSize: 15,
+            fontSize: 14.5,
             fontWeight: FontWeight.w400,
           ),
-          prefixIcon: Icon(icon, color: softText, size: 20),
+          prefixIcon: Icon(icon, color: softText, size: 19),
           prefixIconConstraints: BoxConstraints(
             minWidth: 48,
             minHeight: height,
@@ -341,57 +437,59 @@ class TermsCheckRow extends StatelessWidget {
 
   static const Color navy = Color(0xFF003C56);
   static const Color softText = Color(0xFF71787E);
+  static const Color darkText = Color(0xFF191C1E);
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 22,
-          height: 22,
+        Transform.translate(
+          offset: const Offset(-8, -4),
           child: Checkbox(
             value: value,
             onChanged: onChanged,
             activeColor: navy,
-            side: const BorderSide(color: Color(0xFFE0E4EA), width: 1.3),
+            visualDensity: VisualDensity.compact,
+            side: const BorderSide(color: Color(0xFFE0E4EA), width: 1.2),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(6),
             ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
-        const SizedBox(width: 10),
-        const Expanded(
-          child: Text.rich(
-            TextSpan(
-              style: TextStyle(
-                color: softText,
-                fontSize: 12,
-                height: 1.35,
-                fontWeight: FontWeight.w400,
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: RichText(
+              text: const TextSpan(
+                style: TextStyle(
+                  color: softText,
+                  fontSize: 11.8,
+                  height: 1.35,
+                  fontWeight: FontWeight.w400,
+                ),
+                children: [
+                  TextSpan(text: 'I agree with the '),
+                  TextSpan(
+                    text: 'Term Sheet',
+                    style: TextStyle(
+                      color: darkText,
+                      decoration: TextDecoration.underline,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(text: ' and '),
+                  TextSpan(
+                    text: 'Privacy Policy',
+                    style: TextStyle(
+                      color: darkText,
+                      decoration: TextDecoration.underline,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(text: '.'),
+                ],
               ),
-              children: [
-                TextSpan(text: 'I agree with the '),
-                TextSpan(
-                  text: 'Terms',
-                  style: TextStyle(
-                    color: navy,
-                    decoration: TextDecoration.underline,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextSpan(text: ' and '),
-                TextSpan(
-                  text: 'Privacy Policy',
-                  style: TextStyle(
-                    color: navy,
-                    decoration: TextDecoration.underline,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextSpan(text: '.'),
-              ],
             ),
           ),
         ),
@@ -446,7 +544,7 @@ class GradientMainButton extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.1,
                 ),
@@ -459,45 +557,31 @@ class GradientMainButton extends StatelessWidget {
   }
 }
 
-class LoginPrompt extends StatelessWidget {
-  final VoidCallback onTap;
+class DividerWithText extends StatelessWidget {
+  final String text;
 
-  const LoginPrompt({super.key, required this.onTap});
+  const DividerWithText({super.key, required this.text});
 
-  static const Color navy = Color(0xFF003C56);
+  static const Color divider = Color(0xFFE1E2E6);
   static const Color softText = Color(0xFF71787E);
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
       children: [
-        const Text(
-          'Already registered?',
-          style: TextStyle(
-            color: softText,
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        TextButton(
-          onPressed: onTap,
-          style: TextButton.styleFrom(
-            foregroundColor: navy,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            padding: const EdgeInsets.only(left: 5, right: 5),
-          ),
-          child: const Text(
-            'Sign in',
-            style: TextStyle(
-              color: navy,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+        const Expanded(child: Divider(color: divider, thickness: 1, height: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: softText,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
+        const Expanded(child: Divider(color: divider, thickness: 1, height: 1)),
       ],
     );
   }

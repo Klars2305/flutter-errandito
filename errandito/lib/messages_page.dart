@@ -840,7 +840,7 @@ class RequesterBottomNav extends StatelessWidget {
                 label: 'Home',
                 isActive: active == 'home',
                 onTap: () {
-                  Navigator.pushNamed(context, '/home-dashboard');
+                  Navigator.pushReplacementNamed(context, '/home');
                 },
               ),
             ),
@@ -851,18 +851,7 @@ class RequesterBottomNav extends StatelessWidget {
                 label: 'Services',
                 isActive: active == 'services',
                 onTap: () {
-                  Navigator.pushNamed(context, '/servicehub');
-                },
-              ),
-            ),
-            Expanded(
-              child: NavItem(
-                icon: Icons.receipt_long_outlined,
-                activeIcon: Icons.receipt_long_rounded,
-                label: 'Orders',
-                isActive: active == 'orders',
-                onTap: () {
-                  Navigator.pushNamed(context, '/activity');
+                  Navigator.pushReplacementNamed(context, '/servicehub');
                 },
               ),
             ),
@@ -872,7 +861,20 @@ class RequesterBottomNav extends StatelessWidget {
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
                 isActive: active == 'messages',
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/messages');
+                },
+              ),
+            ),
+            Expanded(
+              child: NavItem(
+                icon: Icons.assignment_outlined,
+                activeIcon: Icons.assignment_rounded,
+                label: 'Activity',
+                isActive: active == 'activity',
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/activity');
+                },
               ),
             ),
             Expanded(
@@ -882,7 +884,7 @@ class RequesterBottomNav extends StatelessWidget {
                 label: 'Profile',
                 isActive: active == 'profile',
                 onTap: () {
-                  Navigator.pushNamed(context, '/profile');
+                  Navigator.pushReplacementNamed(context, '/profile');
                 },
               ),
             ),
