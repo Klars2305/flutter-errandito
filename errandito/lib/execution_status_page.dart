@@ -183,10 +183,10 @@ class _ExecutionStatusUpdatePageState extends State<ExecutionStatusUpdatePage> {
                     children: [
                       StatusHeader(
                         onBackTap: () {
-                          Navigator.pushNamed(context, '/gig-finder');
+                          Navigator.pushReplacementNamed(context, '/gig-finder');
                         },
                         onProfileTap: () {
-                          Navigator.pushNamed(context, '/profile');
+                          Navigator.pushReplacementNamed(context, '/runner-profile');
                         },
                       ),
                       const SizedBox(height: 18),
@@ -230,6 +230,8 @@ class _ExecutionTaskContent extends StatelessWidget {
         StatusProgressCard(
           errandId: errandId,
           status: status,
+          paymentMethod: (data['paymentMethod'] ?? '').toString(),
+          paymentStatus: (data['paymentStatus'] ?? 'unpaid').toString(),
           onStartTracking: onStartTracking,
         ),
         const SizedBox(height: 18),
@@ -243,16 +245,31 @@ class _ExecutionTaskContent extends StatelessWidget {
               arguments: errandId,
             );
           },
-          onCompleteTap: status == 'completed'
+          onCompleteTap: status == 'delivered' || status == 'completed'
               ? null
               : () async {
+                  final paymentMethod = (data['paymentMethod'] ?? '').toString();
+                  final paymentStatus = (data['paymentStatus'] ?? 'unpaid').toString();
+
+                  if (paymentMethod == 'cod' && paymentStatus != 'paid') {
+                    await ErrandService.confirmCashReceived(errandId: errandId);
+                  }
+
                   await ErrandService.updateErrandProgress(
                     errandId: errandId,
-                    status: 'completed',
+                    status: 'delivered',
                   );
 
                   if (!context.mounted) return;
-                  Navigator.pushNamed(context, '/task-complete-earnings');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        paymentMethod == 'cod'
+                            ? 'Cash confirmed and marked as delivered. Waiting for requester confirmation.'
+                            : 'Marked as delivered. Waiting for requester confirmation.',
+                      ),
+                    ),
+                  );
                 },
         ),
       ],
@@ -443,6 +460,8 @@ class CurrentErrandSummaryCard extends StatelessWidget {
         return 'In Progress';
       case 'on_the_way':
         return 'On the Way';
+      case 'delivered':
+        return 'Delivered';
       case 'completed':
         return 'Completed';
       default:
@@ -543,18 +562,23 @@ class CurrentErrandSummaryCard extends StatelessWidget {
 class StatusProgressCard extends StatelessWidget {
   final String errandId;
   final String status;
+  final String paymentMethod;
+  final String paymentStatus;
   final VoidCallback onStartTracking;
 
   const StatusProgressCard({
     super.key,
     required this.errandId,
     required this.status,
+    required this.paymentMethod,
+    required this.paymentStatus,
     required this.onStartTracking,
   });
 
   bool get isAccepted => status == 'accepted';
   bool get isInProgress => status == 'in_progress';
   bool get isOnTheWay => status == 'on_the_way';
+  bool get isDelivered => status == 'delivered';
   bool get isCompleted => status == 'completed';
 
   @override
@@ -574,10 +598,31 @@ class StatusProgressCard extends StatelessWidget {
             children: [
               Expanded(
                 child: SecondaryActionButton(
-                  label: isAccepted ? 'Start Task' : 'Started',
+                  label: isAccepted
+                      ? ((paymentStatus == 'paid' ||
+                              (paymentMethod == 'cod' &&
+                                  paymentStatus == 'cod_pending'))
+                          ? 'Start Task'
+                          : 'Waiting for Payment')
+                      : 'Started',
                   icon: Icons.play_arrow_rounded,
                   onTap: isAccepted
                       ? () async {
+                          final canStartTask = paymentStatus == 'paid' ||
+                              (paymentMethod == 'cod' &&
+                                  paymentStatus == 'cod_pending');
+
+                          if (!canStartTask) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'The requester must pay online or choose COD before you can start.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
                           await ErrandService.updateErrandProgress(
                             errandId: errandId,
                             status: 'in_progress',
@@ -598,7 +643,7 @@ class StatusProgressCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: PrimaryActionButton(
-                  label: isOnTheWay || isCompleted
+                  label: isOnTheWay || isDelivered || isCompleted
                       ? 'On the Way'
                       : 'Set On the Way',
                   icon: Icons.delivery_dining_rounded,
@@ -641,6 +686,8 @@ class StatusTimeline extends StatelessWidget {
         return 1;
       case 'on_the_way':
         return 2;
+      case 'delivered':
+        return 3;
       case 'completed':
         return 3;
       default:
@@ -668,7 +715,7 @@ class StatusTimeline extends StatelessWidget {
       ),
       StatusStepData(
         title: 'Delivered',
-        subtitle: 'Task completed.',
+        subtitle: 'Delivered. Waiting for requester confirmation.',
         isDone: currentIndex >= 3,
       ),
     ];
@@ -944,7 +991,7 @@ class TaskActionCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: PrimaryActionButton(
-                  label: onCompleteTap == null ? 'Completed' : 'Complete',
+                  label: onCompleteTap == null ? 'Delivered' : 'Mark Delivered',
                   icon: Icons.check_circle_outline_rounded,
                   onTap: onCompleteTap,
                 ),
@@ -1169,11 +1216,11 @@ class RunnerBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
+          color: Colors.white.withOpacity(0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
@@ -1183,24 +1230,11 @@ class RunnerBottomNav extends StatelessWidget {
           children: [
             Expanded(
               child: RunnerNavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
-                isActive: active == 'home',
-                onTap: () {
-                  Navigator.pushNamed(context, '/runner-home');
-                },
-              ),
-            ),
-            Expanded(
-              child: RunnerNavItem(
                 icon: Icons.search_outlined,
                 activeIcon: Icons.search_rounded,
                 label: 'Gigs',
                 isActive: active == 'gigs',
-                onTap: () {
-                  Navigator.pushNamed(context, '/gig-finder');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/gig-finder'),
               ),
             ),
             Expanded(
@@ -1209,9 +1243,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.receipt_long_rounded,
                 label: 'Tasks',
                 isActive: active == 'tasks',
-                onTap: () {
-                  Navigator.pushNamed(context, '/execution-status');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/execution-status'),
               ),
             ),
             Expanded(
@@ -1219,10 +1251,8 @@ class RunnerBottomNav extends StatelessWidget {
                 icon: Icons.chat_bubble_outline_rounded,
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
-                isActive: active == 'runner-messages',
-                onTap: () {
-                  Navigator.pushNamed(context, '/runner-messages');
-                },
+                isActive: active == 'messages' || active == 'runner-messages',
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-messages'),
               ),
             ),
             Expanded(
@@ -1231,9 +1261,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
                 isActive: active == 'profile',
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-profile'),
               ),
             ),
           ],
@@ -1243,7 +1271,7 @@ class RunnerBottomNav extends StatelessWidget {
   }
 }
 
-class RunnerNavItem extends StatelessWidget {
+class RunnerNavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -1259,46 +1287,63 @@ class RunnerNavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<RunnerNavItem> createState() => _RunnerNavItemState();
+}
+
+class _RunnerNavItemState extends State<RunnerNavItem> {
+  bool hovered = false;
   static const Color navy = Color(0xFF003C56);
   static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isActive ? navy : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? Colors.white : inactive,
-              size: 21,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactive,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 1,
+    final bool activeOrHover = widget.isActive || hovered;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : hovered
+                    ? const Color(0xFFEAF3F6)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                activeOrHover ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                  fontSize: 10,
+                  fontWeight: activeOrHover ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+

@@ -517,20 +517,87 @@ class ProfileAvatar extends StatelessWidget {
 class ProfileStatsRow extends StatelessWidget {
   const ProfileStatsRow({super.key});
 
+  static const Color navy = Color(0xFF003C56);
+
+  double _moneyFrom(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    final clean = raw?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '';
+    return double.tryParse(clean) ?? 0;
+  }
+
+  String _shortPeso(double value) {
+    if (value >= 1000) {
+      final v = value / 1000;
+      return '₱${v.toStringAsFixed(v >= 10 ? 0 : 1)}k';
+    }
+    return '₱${value.toStringAsFixed(0)}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(
-          child: ProfileStatItem(value: '128', label: 'Errands'),
-        ),
-        Expanded(
-          child: ProfileStatItem(value: '4.9', label: 'Rating'),
-        ),
-        Expanded(
-          child: ProfileStatItem(value: '₱6k', label: 'Earnings'),
-        ),
-      ],
+    final uid = AuthService.currentUserId;
+
+    if (uid == null) {
+      return const Row(
+        children: [
+          Expanded(child: ProfileStatItem(value: '0', label: 'Errands')),
+          Expanded(child: ProfileStatItem(value: 'No ratings', label: 'Rating')),
+          Expanded(child: ProfileStatItem(value: '₱0', label: 'Spent')),
+        ],
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: AuthService.currentUserStream(),
+      builder: (context, userSnapshot) {
+        final user = userSnapshot.data?.data() ?? <String, dynamic>{};
+        final rating = (user['averageRating'] as num?)?.toDouble() ?? 0.0;
+        final ratingCount = (user['ratingCount'] as num?)?.toInt() ?? 0;
+        final ratingText = ratingCount == 0 ? 'No ratings' : rating.toStringAsFixed(1);
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('errands')
+              .where('requesterId', isEqualTo: uid)
+              .snapshots(),
+          builder: (context, errandSnapshot) {
+            final docs = errandSnapshot.data?.docs ?? [];
+            double spent = 0;
+            for (final doc in docs) {
+              final data = doc.data();
+              final status = (data['status'] ?? '').toString();
+              if (status == 'completed') {
+                spent += _moneyFrom(
+                  data['totalAmount'] ?? data['budget'] ?? data['pay'],
+                );
+              }
+            }
+
+            return Row(
+              children: [
+                Expanded(
+                  child: ProfileStatItem(
+                    value: '${docs.length}',
+                    label: 'Errands',
+                  ),
+                ),
+                Expanded(
+                  child: ProfileStatItem(
+                    value: ratingText,
+                    label: 'Rating',
+                  ),
+                ),
+                Expanded(
+                  child: ProfileStatItem(
+                    value: _shortPeso(spent),
+                    label: 'Spent',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

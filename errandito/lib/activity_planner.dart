@@ -224,7 +224,7 @@ class ActivityPlannerPage extends StatelessWidget {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
-                            Navigator.pushNamed(context, '/gig-finder');
+                            Navigator.pushReplacementNamed(context, '/gig-finder');
                           },
                           child: const Padding(
                             padding: EdgeInsets.all(14),
@@ -249,7 +249,7 @@ class ActivityPlannerPage extends StatelessWidget {
 
           const Align(
             alignment: Alignment.bottomCenter,
-            child: RunnerBottomNav(active: 'home'),
+            child: RunnerBottomNav(active: 'gigs'),
           ),
         ],
       ),
@@ -416,11 +416,11 @@ class RunnerBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
+          color: Colors.white.withOpacity(0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
@@ -430,22 +430,11 @@ class RunnerBottomNav extends StatelessWidget {
           children: [
             Expanded(
               child: RunnerNavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
-                isActive: active == 'home',
-                onTap: () {
-                  Navigator.pushNamed(context, '/runner-home');
-                },
-              ),
-            ),
-            Expanded(
-              child: RunnerNavItem(
                 icon: Icons.search_outlined,
                 activeIcon: Icons.search_rounded,
                 label: 'Gigs',
                 isActive: active == 'gigs',
-                onTap: () {},
+                onTap: () => Navigator.pushReplacementNamed(context, '/gig-finder'),
               ),
             ),
             Expanded(
@@ -454,9 +443,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.receipt_long_rounded,
                 label: 'Tasks',
                 isActive: active == 'tasks',
-                onTap: () {
-                  Navigator.pushNamed(context, '/execution-status');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/execution-status'),
               ),
             ),
             Expanded(
@@ -464,10 +451,8 @@ class RunnerBottomNav extends StatelessWidget {
                 icon: Icons.chat_bubble_outline_rounded,
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
-                isActive: active == 'runner-messages',
-                onTap: () {
-                  Navigator.pushNamed(context, '/runner-messages');
-                },
+                isActive: active == 'messages' || active == 'runner-messages',
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-messages'),
               ),
             ),
             Expanded(
@@ -476,9 +461,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
                 isActive: active == 'profile',
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-profile'),
               ),
             ),
           ],
@@ -488,7 +471,7 @@ class RunnerBottomNav extends StatelessWidget {
   }
 }
 
-class RunnerNavItem extends StatelessWidget {
+class RunnerNavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -504,46 +487,63 @@ class RunnerNavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<RunnerNavItem> createState() => _RunnerNavItemState();
+}
+
+class _RunnerNavItemState extends State<RunnerNavItem> {
+  bool hovered = false;
   static const Color navy = Color(0xFF003C56);
   static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isActive ? navy : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? Colors.white : inactive,
-              size: 21,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactive,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 1,
+    final bool activeOrHover = widget.isActive || hovered;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : hovered
+                    ? const Color(0xFFEAF3F6)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                activeOrHover ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                  fontSize: 10,
+                  fontWeight: activeOrHover ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+

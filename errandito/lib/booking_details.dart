@@ -172,7 +172,11 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
         SnackBar(content: Text('Errand posted successfully. ID: $errandId')),
       );
 
-      Navigator.pushNamed(context, '/select-helper');
+      Navigator.pushNamed(
+        context,
+        '/select-helper',
+        arguments: errandId,
+      );
     } catch (e) {
       if (!mounted) return;
 

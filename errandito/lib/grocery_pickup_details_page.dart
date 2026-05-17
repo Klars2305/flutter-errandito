@@ -1,671 +1,342 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
-class GroceryPickupDetailsPage extends StatelessWidget {
+import 'services/errand_service.dart';
+
+class GroceryPickupDetailsPage extends StatefulWidget {
   const GroceryPickupDetailsPage({super.key});
 
+  @override
+  State<GroceryPickupDetailsPage> createState() => _GroceryPickupDetailsPageState();
+}
+
+class _GroceryPickupDetailsPageState extends State<GroceryPickupDetailsPage> {
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
-  static const Color skyNavy = Color(0xFF0C4A6E);
-  static const Color green = Color(0xFF004035);
-  static const Color darkText = Color(0xFF191C1E);
   static const Color bodyText = Color(0xFF40484E);
+  static const Color mutedText = Color(0xFF71787E);
+  static const Color borderColor = Color(0xFFE6E9EF);
 
-  static const List<LogisticsStop> logistics = [
-    LogisticsStop(
-      type: 'Pickup',
-      title: 'Whole Foods Market',
-      address: 'Columbus Circle, NY 10019',
-      contact: 'Contact: Concierge Desk',
-      tone: LogisticsTone.pickup,
-    ),
-    LogisticsStop(
-      type: 'Drop-off',
-      title: '15 CPW Residences',
-      address: '15 Central Park West, NY 10023',
-      contact: 'Contact: Service Entrance',
-      tone: LogisticsTone.dropoff,
-    ),
-  ];
+  String? _errandId;
+  bool _readArgs = false;
+  bool _isAccepting = false;
 
-  static const List<String> mandates = [
-    'Ensure all produce is hand-picked for perfection.',
-    'Cold items must remain in insulated bags throughout transit.',
-    'Use provided digital checklist for all items.',
-    'Photo of receipt required for reimbursement.',
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_readArgs) return;
+    _readArgs = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String && args.isNotEmpty) _errandId = args;
+  }
+
+  Future<String?> _fallbackLatestOpenErrandId() async {
+    final snap = await ErrandService.openErrandsStream().first;
+    if (snap.docs.isEmpty) return null;
+    final docs = snap.docs.toList()
+      ..sort((a, b) {
+        final ta = a.data()['updatedAt'] ?? a.data()['createdAt'];
+        final tb = b.data()['updatedAt'] ?? b.data()['createdAt'];
+        if (ta is Timestamp && tb is Timestamp) return tb.compareTo(ta);
+        return 0;
+      });
+    return docs.first.id;
+  }
+
+  Future<void> _acceptErrand(String errandId) async {
+    if (_isAccepting) return;
+    setState(() => _isAccepting = true);
+
+    try {
+      await ErrandService.acceptErrand(errandId: errandId);
+
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever) {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+            ),
+          );
+          await ErrandService.updateRunnerLocation(
+            errandId: errandId,
+            lat: position.latitude,
+            lng: position.longitude,
+          );
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Errand accepted. Requester has been notified.')),
+      );
+      Navigator.pushReplacementNamed(context, '/execution-status', arguments: errandId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to accept errand: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isAccepting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bool isSmall = MediaQuery.of(context).size.width <= 520;
+    final bool compact = MediaQuery.of(context).size.width <= 520;
 
     return Scaffold(
       backgroundColor: background,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              SafeArea(
-                bottom: false,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC).withValues(alpha: 0.80),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: const Color(0xFFE2E8F0).withValues(alpha: 0.80),
+      body: SafeArea(
+        child: FutureBuilder<String?>(
+          future: _errandId == null ? _fallbackLatestOpenErrandId() : Future.value(_errandId),
+          builder: (context, idSnapshot) {
+            if (!idSnapshot.hasData) {
+              return const Center(child: CircularProgressIndicator(color: navy));
+            }
+            final errandId = idSnapshot.data;
+            if (errandId == null || errandId.isEmpty) {
+              return _EmptyDetails(onBack: () => Navigator.pop(context));
+            }
+
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: ErrandService.errandStream(errandId),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'Unable to load errand details:\n${snapshot.error}',
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: () {
-                                Navigator.pushNamed(context, '/gig-finder');
-                              },
-                              child: const SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: Center(
-                                  child: Text(
-                                    '←',
-                                    style: TextStyle(
-                                      color: skyNavy,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator(color: navy));
+                }
+                final data = snapshot.data!.data();
+                if (data == null) {
+                  return _EmptyDetails(onBack: () => Navigator.pop(context));
+                }
+
+                final serviceType = (data['serviceType'] ?? data['title'] ?? 'Errand').toString();
+                final address = (data['serviceAddress'] ?? data['pickup'] ?? 'Panabo City').toString();
+                final requester = (data['requesterName'] ?? 'Requester').toString();
+                final preferredDate = (data['preferredDate'] ?? 'No preferred date').toString();
+                final timeSlot = (data['timeSlot'] ?? 'No time slot').toString();
+                final budget = (data['budget'] ?? data['pay'] ?? '₱0').toString();
+                final instructions = (data['instructions'] ?? 'No instructions provided.').toString().trim();
+                final status = (data['status'] ?? 'open').toString();
+                final paymentStatus = (data['paymentStatus'] ?? 'unpaid').toString();
+                final canAccept = status == 'paid_waiting_runner' || status == 'booked_paid' || status == 'paid';
+
+                return Stack(
+                  children: [
+                    SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(compact ? 18 : 24, 16, compact ? 18 : 24, 132),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 760),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () => Navigator.canPop(context)
+                                        ? Navigator.pop(context)
+                                        : Navigator.pushReplacementNamed(context, '/gig-finder'),
+                                    icon: const Icon(Icons.arrow_back_rounded, color: navy),
                                   ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Hi, Bronny',
-                            style: TextStyle(
-                              color: skyNavy,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: Image.asset(
-                            'assets/images/profile.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: const Color(0xFFD6E5EC),
-                                child: const Icon(Icons.person, color: navy),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 176),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1024),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              PremiumBadge(),
-                              SizedBox(width: 10),
-                              Text(
-                                'Job ID: #GPC-9921',
-                                style: TextStyle(color: bodyText, fontSize: 14),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Text(
-                            'Premium Organic Provisions Pickup',
-                            style: TextStyle(
-                              color: navy,
-                              fontSize: isSmall ? 34 : 38,
-                              fontWeight: FontWeight.w800,
-                              height: 1.1,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          if (isSmall)
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                InfoText('Starts Today, 15:30'),
-                                SizedBox(height: 8),
-                                InfoText('₱45.00 Fixed'),
-                                SizedBox(height: 8),
-                                InfoText('2.1 miles total'),
-                              ],
-                            )
-                          else
-                            const Wrap(
-                              spacing: 12,
-                              runSpacing: 8,
-                              children: [
-                                InfoText('Starts Today, 15:30'),
-                                InfoText('₱45.00 Fixed'),
-                                InfoText('2.1 miles total'),
-                              ],
-                            ),
-
-                          const SizedBox(height: 12),
-
-                          const Text(
-                            'Curated selection of seasonal organic produce and artisanal pantry staples. This task requires meticulous quality inspection and strict adherence to temperature-controlled handling for all perishable items.',
-                            style: TextStyle(
-                              color: bodyText,
-                              fontSize: 15,
-                              height: 1.65,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(4),
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              alignment: Alignment.bottomCenter,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    height: 334,
-                                    child: Image.asset(
-                                      'assets/images/grocery.png',
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return Container(
-                                              color: const Color(0xFFECEEF1),
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons
-                                                      .shopping_basket_outlined,
-                                                  color: navy,
-                                                  size: 64,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 20,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 7,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.90,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Text(
-                                      'QUALITY GUARANTEED',
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Errand Details',
                                       style: TextStyle(
                                         color: navy,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
                                       ),
                                     ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(22),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  gradient: const LinearGradient(colors: [navy, teal]),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: navy.withValues(alpha: 0.16),
+                                      blurRadius: 28,
+                                      offset: const Offset(0, 14),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          const SectionTitle(title: 'Logistics Pathway'),
-
-                          const SizedBox(height: 14),
-
-                          Column(
-                            children: logistics
-                                .map(
-                                  (stop) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: LogisticsCard(stop: stop),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          const SectionTitle(title: 'Client Mandate'),
-
-                          const SizedBox(height: 14),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE1E2E6),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Critical Instructions',
-                                  style: TextStyle(
-                                    color: darkText,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                ...mandates.map(
-                                  (item) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
                                         Container(
-                                          width: 6,
-                                          height: 6,
-                                          margin: const EdgeInsets.only(
-                                            top: 8.5,
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.16),
+                                            borderRadius: BorderRadius.circular(999),
                                           ),
-                                          decoration: const BoxDecoration(
-                                            color: navy,
-                                            shape: BoxShape.circle,
+                                          child: Text(
+                                            serviceType.toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w900,
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            item,
-                                            style: const TextStyle(
-                                              color: bodyText,
-                                              fontSize: 14,
-                                              height: 1.45,
-                                            ),
+                                        const Spacer(),
+                                        Text(
+                                          budget,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w900,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: green,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Temp-Controlled',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Maintain Cold Chain',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFD8DADD,
-                              ).withValues(alpha: 0.40),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Fully Insured & Bonded via Steward Platinum Protection',
-                                  style: TextStyle(
-                                    color: bodyText,
-                                    fontSize: 12,
-                                    letterSpacing: 0.48,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    PartnerLogo(
-                                      path: 'assets/images/partner_a.png',
-                                    ),
-                                    const SizedBox(width: 10),
-                                    PartnerLogo(
-                                      path: 'assets/images/partner_b.png',
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 78,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color.fromRGBO(255, 255, 255, 0.80),
-                border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
-              ),
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1024),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 56,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [navy, teal],
-                                ),
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: () {
-                                    Navigator.pushNamed(
-                                      context,
-                                      '/execution-status',
-                                    );
-                                  },
-                                  child: const Center(
-                                    child: Text(
-                                      'Accept Task',
+                                    const SizedBox(height: 14),
+                                    Text(
+                                      serviceType,
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 18,
+                                        fontSize: compact ? 30 : 36,
+                                        fontWeight: FontWeight.w900,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Requester: $requester',
+                                      style: const TextStyle(
+                                        color: Color(0xFFE5F4F7),
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Material(
-                          color: const Color(0xFFE1E2E6),
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {},
-                            child: const SizedBox(
-                              width: 56,
-                              height: 56,
-                              child: Icon(
-                                Icons.chat_bubble_outline,
-                                color: navy,
-                                size: 22,
+                              const SizedBox(height: 18),
+                              _DetailsCard(
+                                children: [
+                                  _InfoRow(icon: Icons.storefront_outlined, label: 'Pickup', value: address),
+                                  _InfoRow(icon: Icons.location_on_outlined, label: 'Drop-off', value: address),
+                                  _InfoRow(icon: Icons.calendar_month_rounded, label: 'Date', value: preferredDate),
+                                  _InfoRow(icon: Icons.schedule_rounded, label: 'Time', value: timeSlot),
+                                  _InfoRow(icon: Icons.payments_outlined, label: 'Payment', value: paymentStatus),
+                                  _InfoRow(icon: Icons.info_outline_rounded, label: 'Status', value: status),
+                                ],
                               ),
+                              const SizedBox(height: 18),
+                              _DetailsCard(
+                                title: 'Instructions',
+                                children: [
+                                  Text(
+                                    instructions.isEmpty ? 'No instructions provided.' : instructions,
+                                    style: const TextStyle(
+                                      color: bodyText,
+                                      fontSize: 14,
+                                      height: 1.55,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              _DetailsCard(
+                                title: 'Important',
+                                children: const [
+                                  Text(
+                                    'After finishing the errand, mark it as delivered. The requester has the final authority to confirm completion and release your payout.',
+                                    style: TextStyle(
+                                      color: bodyText,
+                                      fontSize: 13,
+                                      height: 1.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 20,
+                              offset: const Offset(0, -8),
+                            ),
+                          ],
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 760),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _OutlinedButton(
+                                    label: 'Message',
+                                    icon: Icons.chat_bubble_outline_rounded,
+                                    onTap: () => Navigator.pushNamed(
+                                      context,
+                                      '/execution-messaging',
+                                      arguments: errandId,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: _PrimaryButton(
+                                    label: _isAccepting ? 'Accepting...' : canAccept ? 'Accept Task' : 'Open Status',
+                                    icon: canAccept ? Icons.check_rounded : Icons.assignment_turned_in_rounded,
+                                    onTap: _isAccepting
+                                        ? null
+                                        : canAccept
+                                            ? () => _acceptErrand(errandId)
+                                            : () => Navigator.pushNamed(context, '/execution-status', arguments: errandId),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const Align(
-            alignment: Alignment.bottomCenter,
-            child: RunnerBottomNav(active: 'gigs'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PremiumBadge extends StatelessWidget {
-  const PremiumBadge({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC7E7FF),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Text(
-        'Premium Errand',
-        style: TextStyle(
-          color: Color(0xFF001E2E),
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-        ),
-      ),
-    );
-  }
-}
-
-class InfoText extends StatelessWidget {
-  final String text;
-
-  const InfoText(this.text, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Color(0xFF40484E),
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}
-
-class SectionTitle extends StatelessWidget {
-  final String title;
-
-  const SectionTitle({super.key, required this.title});
-
-  static const Color navy = Color(0xFF003C56);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 32, height: 2, color: navy),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            color: navy,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            height: 1.2,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class LogisticsCard extends StatelessWidget {
-  final LogisticsStop stop;
-
-  const LogisticsCard({super.key, required this.stop});
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color green = Color(0xFF004035);
-  static const Color darkText = Color(0xFF191C1E);
-  static const Color bodyText = Color(0xFF40484E);
-
-  @override
-  Widget build(BuildContext context) {
-    final Color sideColor = stop.tone == LogisticsTone.pickup ? navy : green;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F7),
-        borderRadius: BorderRadius.circular(10),
-        border: Border(left: BorderSide(color: sideColor, width: 4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            stop.type,
-            style: const TextStyle(
-              color: navy,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.76,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            stop.title,
-            style: const TextStyle(
-              color: darkText,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            stop.address,
-            style: const TextStyle(color: bodyText, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            stop.contact,
-            style: const TextStyle(
-              color: navy,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PartnerLogo extends StatelessWidget {
-  final String path;
-
-  const PartnerLogo({super.key, required this.path});
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.5,
-      child: SizedBox(
-        width: 24,
-        height: 24,
-        child: Image.asset(
-          path,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF003C56).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
+                  ],
+                );
+              },
             );
           },
         ),
@@ -674,81 +345,122 @@ class PartnerLogo extends StatelessWidget {
   }
 }
 
-class LogisticsStop {
-  final String type;
-  final String title;
-  final String address;
-  final String contact;
-  final LogisticsTone tone;
+class _EmptyDetails extends StatelessWidget {
+  final VoidCallback onBack;
+  const _EmptyDetails({required this.onBack});
 
-  const LogisticsStop({
-    required this.type,
-    required this.title,
-    required this.address,
-    required this.contact,
-    required this.tone,
-  });
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.assignment_outlined, color: Color(0xFF003C56), size: 54),
+            const SizedBox(height: 14),
+            const Text(
+              'No errand selected',
+              style: TextStyle(
+                color: Color(0xFF003C56),
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Open a posted errand from the Gigs page to view its real details.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF40484E), fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 18),
+            _PrimaryButton(label: 'Back to Gigs', icon: Icons.arrow_back_rounded, onTap: onBack),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-enum LogisticsTone { pickup, dropoff }
-
-class RunnerBottomNav extends StatelessWidget {
-  final String active;
-
-  const RunnerBottomNav({super.key, required this.active});
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color muted = Color(0xFF71787E);
+class _DetailsCard extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+  const _DetailsCard({this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 78,
-      padding: const EdgeInsets.only(top: 8, bottom: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE6E9EF)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, -8),
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          BottomNavItem(
-            icon: Icons.home_outlined,
-            label: 'Home',
-            isActive: active == 'home',
-            onTap: () {
-              Navigator.pushNamed(context, '/activity-planner');
-            },
+          if (title != null) ...[
+            Text(
+              title!,
+              style: const TextStyle(
+                color: Color(0xFF003C56),
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF005477), size: 20),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF71787E),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          BottomNavItem(
-            icon: Icons.search_outlined,
-            label: 'Gigs',
-            isActive: active == 'gigs',
-            onTap: () {
-              Navigator.pushNamed(context, '/gig-finder');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.assignment_outlined,
-            label: 'Status',
-            isActive: active == 'status',
-            onTap: () {
-              Navigator.pushNamed(context, '/execution-status');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.account_balance_wallet_outlined,
-            label: 'Earnings',
-            isActive: active == 'earnings',
-            onTap: () {
-              Navigator.pushNamed(context, '/payment-earnings');
-            },
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF003C56),
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ],
       ),
@@ -756,46 +468,89 @@ class RunnerBottomNav extends StatelessWidget {
   }
 }
 
-class BottomNavItem extends StatelessWidget {
-  final IconData icon;
+class _PrimaryButton extends StatelessWidget {
   final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const BottomNavItem({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  static const Color navy = Color(0xFF003C56);
-  static const Color muted = Color(0xFF71787E);
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _PrimaryButton({required this.label, required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final Color color = isActive ? navy : muted;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          decoration: BoxDecoration(
+            color: onTap == null ? const Color(0xFF94A3B8) : const Color(0xFF005477),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OutlinedButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _OutlinedButton({required this.label, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE6E9EF)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: const Color(0xFF003C56), size: 19),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF003C56),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

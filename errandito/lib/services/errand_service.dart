@@ -71,6 +71,18 @@ class ErrandService {
       'runnerName': null,
       'status': 'pending_payment',
       'paymentStatus': 'unpaid',
+      'paymentMethod': null,
+      'paymentProvider': null,
+      'paymentCollected': false,
+      'paymentRequestId': null,
+      'paymentCheckoutUrl': null,
+      'paymentReferenceNumber': null,
+      'codConfirmedByRunner': false,
+      'codConfirmedAt': null,
+      'paidAt': null,
+      'paymentUpdatedAt': null,
+      'currency': 'PHP',
+      'amount': 12000,
       'visibleToRunners': false,
       'serviceType': serviceType,
       'title': serviceType,
@@ -115,6 +127,7 @@ class ErrandService {
       'paid',
       'booked',
       'booked_paid',
+      'paid_waiting_runner',
     },
   }) async {
     final user = _requireUser();
@@ -136,32 +149,38 @@ class ErrandService {
     return null;
   }
 
-  static Future<void> bookRunner({
+
+  static Future<void> bookRunnerForErrand({
+    required String errandId,
     required String runnerId,
     required String runnerName,
     required String runnerRole,
   }) async {
     final requester = await _currentUserData();
-    final errandRef = await latestRequesterErrand(
-      allowedStatuses: {'pending_payment', 'posted', 'paid'},
-    );
-    if (errandRef == null) {
-      throw Exception('No errand found. Please post an errand first.');
+    final errandRef = errands.doc(errandId);
+    final errandSnapshot = await errandRef.get();
+
+    if (!errandSnapshot.exists) {
+      throw Exception('Errand not found. Please post an errand first.');
     }
 
-    final errandSnapshot = await errandRef.get();
     final errand = errandSnapshot.data() ?? {};
+    if ((errand['requesterId'] ?? '').toString() != requester['uid'].toString()) {
+      throw Exception('Only the requester can book a runner for this errand.');
+    }
+
     final title = (errand['serviceType'] ?? errand['title'] ?? 'Errand')
         .toString();
     final address = (errand['serviceAddress'] ?? 'Panabo City').toString();
-    final paid = (errand['paymentStatus'] ?? 'unpaid') == 'paid';
+    final paymentStatus = (errand['paymentStatus'] ?? 'unpaid').toString();
+    final paid = paymentStatus == 'paid';
 
     await errandRef.update({
       'runnerId': runnerId,
       'runnerName': runnerName,
       'runnerRole': runnerRole,
-      'status': paid ? 'booked_paid' : 'pending_payment',
-      'visibleToRunners': paid,
+      'status': paid ? 'accepted' : 'pending_payment',
+      'visibleToRunners': false,
       'bookedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'participants': FieldValue.arrayUnion([requester['uid'], runnerId]),
@@ -178,8 +197,64 @@ class ErrandService {
       'type': paid ? 'booking_paid' : 'booking_pending_payment',
       'title': paid ? 'You got booked' : 'Booking pending payment',
       'body': paid
-          ? '${requester['fullName']} booked and paid you for $title at $address.'
-          : '${requester['fullName']} selected you for $title. Waiting for payment.',
+          ? '${requester['fullName']} booked and paid for $title at $address.'
+          : '${requester['fullName']} selected you for $title. Waiting for payment method confirmation.',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> bookRunner({
+    required String runnerId,
+    required String runnerName,
+    required String runnerRole,
+  }) async {
+    final requester = await _currentUserData();
+    final errandRef = await latestRequesterErrand(
+      allowedStatuses: {
+        'pending_payment',
+        'posted',
+        'paid',
+        'booked_paid',
+        'paid_waiting_runner',
+      },
+    );
+    if (errandRef == null) {
+      throw Exception('No errand found. Please post an errand first.');
+    }
+
+    final errandSnapshot = await errandRef.get();
+    final errand = errandSnapshot.data() ?? {};
+    final title = (errand['serviceType'] ?? errand['title'] ?? 'Errand')
+        .toString();
+    final address = (errand['serviceAddress'] ?? 'Panabo City').toString();
+    final paymentStatus = (errand['paymentStatus'] ?? 'unpaid').toString();
+    final paid = paymentStatus == 'paid';
+
+    await errandRef.update({
+      'runnerId': runnerId,
+      'runnerName': runnerName,
+      'runnerRole': runnerRole,
+      'status': paid ? 'accepted' : 'pending_payment',
+      'visibleToRunners': false,
+      'bookedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'participants': FieldValue.arrayUnion([requester['uid'], runnerId]),
+      'unreadBy.${requester['uid']}': false,
+      'unreadBy.$runnerId': false,
+    });
+
+    await notifications.add({
+      'receiverId': runnerId,
+      'receiverName': runnerName,
+      'senderId': requester['uid'],
+      'senderName': requester['fullName'],
+      'errandId': errandRef.id,
+      'type': paid ? 'booking_paid' : 'booking_pending_payment',
+      'title': paid ? 'You got booked' : 'Booking pending online payment',
+      'body': paid
+          ? '${requester['fullName']} booked and paid online for $title at $address.'
+          : '${requester['fullName']} selected you for $title. Waiting for online payment confirmation.',
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -194,6 +269,7 @@ class ErrandService {
         'booked',
         'paid',
         'booked_paid',
+        'paid_waiting_runner',
       },
     );
     if (errandRef == null) throw Exception('No errand found to pay.');
@@ -207,9 +283,14 @@ class ErrandService {
     final address = (errand['serviceAddress'] ?? 'Panabo City').toString();
 
     await errandRef.update({
+      'paymentMethod': 'mock_online',
       'paymentStatus': 'paid',
-      'status': runnerId == null || runnerId.isEmpty ? 'paid' : 'booked_paid',
-      'visibleToRunners': true,
+      'paymentCollected': true,
+      'payoutStatus': 'held_until_completion',
+      'status': runnerId == null || runnerId.isEmpty
+          ? 'paid_waiting_runner'
+          : 'accepted',
+      'visibleToRunners': runnerId == null || runnerId.isEmpty,
       'paidAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -224,7 +305,7 @@ class ErrandService {
         'type': 'booking_paid',
         'title': 'You got booked',
         'body':
-            '${requester['fullName']} booked and paid you for $title at $address.',
+            '${requester['fullName']} booked and paid online for $title at $address. The platform fee is already recorded.',
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -317,6 +398,7 @@ class ErrandService {
             'accepted',
             'in_progress',
             'on_the_way',
+            'delivered',
           ],
         )
         .snapshots();
@@ -335,8 +417,15 @@ class ErrandService {
       updateData['startedAt'] = FieldValue.serverTimestamp();
     } else if (status == 'on_the_way') {
       updateData['onTheWayAt'] = FieldValue.serverTimestamp();
+    } else if (status == 'delivered') {
+      updateData['deliveredAt'] = FieldValue.serverTimestamp();
+      updateData['runnerMarkedDelivered'] = true;
+      updateData['requesterConfirmedComplete'] = false;
+      updateData['visibleToRunners'] = false;
     } else if (status == 'completed') {
       updateData['completedAt'] = FieldValue.serverTimestamp();
+      updateData['requesterConfirmedComplete'] = true;
+      updateData['payoutStatus'] = 'ready_for_release';
       updateData['visibleToRunners'] = false;
     }
 
@@ -434,6 +523,190 @@ class ErrandService {
     batch.set(errandRef, updateData, SetOptions(merge: true));
 
     await batch.commit();
+  }
+
+
+
+
+
+  static Future<void> chooseCashOnDelivery({
+    required String errandId,
+  }) async {
+    final requester = await _currentUserData();
+    final errandRef = errands.doc(errandId);
+    final errandSnapshot = await errandRef.get();
+    final data = errandSnapshot.data();
+
+    if (data == null) {
+      throw Exception('Errand not found.');
+    }
+
+    if ((data['requesterId'] ?? '').toString() != requester['uid'].toString()) {
+      throw Exception('Only the requester can choose the payment method.');
+    }
+
+    final runnerId = (data['runnerId'] ?? '').toString();
+    final runnerName = (data['runnerName'] ?? 'Runner').toString();
+    if (runnerId.isEmpty) {
+      throw Exception('Please book a runner before choosing COD.');
+    }
+
+    await errandRef.update({
+      'paymentMethod': 'cod',
+      'paymentStatus': 'cod_pending',
+      'paymentProvider': null,
+      'paymentRequestId': null,
+      'paymentCheckoutUrl': null,
+      'paymentReferenceNumber': null,
+      'paymentCollected': false,
+      'codConfirmedByRunner': false,
+      'paymentUpdatedAt': FieldValue.serverTimestamp(),
+      'status': 'accepted',
+      'visibleToRunners': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'participants': FieldValue.arrayUnion([requester['uid'], runnerId]),
+      'unreadBy.${requester['uid']}': false,
+      'unreadBy.$runnerId': false,
+    });
+
+    await notifications.add({
+      'receiverId': runnerId,
+      'receiverName': runnerName,
+      'senderId': requester['uid'],
+      'senderName': requester['fullName'],
+      'errandId': errandId,
+      'type': 'booking_cod',
+      'title': 'You got booked',
+      'body':
+          '${requester['fullName']} selected Cash on Delivery for this errand. You may accept the task.',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> confirmCashReceived({
+    required String errandId,
+  }) async {
+    final runner = await _currentUserData();
+    final errandRef = errands.doc(errandId);
+    final errandSnapshot = await errandRef.get();
+    final data = errandSnapshot.data();
+
+    if (data == null) {
+      throw Exception('Errand not found.');
+    }
+
+    if ((data['runnerId'] ?? '').toString() != runner['uid'].toString()) {
+      throw Exception('Only the assigned runner can confirm cash received.');
+    }
+
+    await errandRef.update({
+      'paymentStatus': 'paid',
+      'paymentCollected': true,
+      'codConfirmedByRunner': true,
+      'codConfirmedAt': FieldValue.serverTimestamp(),
+      'paidAt': FieldValue.serverTimestamp(),
+      'paymentUpdatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> confirmRequesterCompletion({required String errandId}) async {
+    final requester = await _currentUserData();
+    final errandRef = errands.doc(errandId);
+    final errandSnapshot = await errandRef.get();
+    final data = errandSnapshot.data() ?? <String, dynamic>{};
+
+    if ((data['requesterId'] ?? '').toString() != requester['uid'].toString()) {
+      throw Exception('Only the requester can confirm completion.');
+    }
+
+    final runnerId = (data['runnerId'] ?? '').toString();
+    final runnerName = (data['runnerName'] ?? 'Runner').toString();
+    final title = (data['serviceType'] ?? data['title'] ?? 'Errand').toString();
+
+    await errandRef.update({
+      'status': 'completed',
+      'requesterConfirmedComplete': true,
+      'paymentStatus': 'paid',
+      'payoutStatus': 'ready_for_release',
+      'visibleToRunners': false,
+      'completedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (runnerId.isNotEmpty) {
+      await notifications.add({
+        'receiverId': runnerId,
+        'receiverName': runnerName,
+        'senderId': requester['uid'],
+        'senderName': requester['fullName'],
+        'errandId': errandId,
+        'type': 'completion_confirmed',
+        'title': 'Completion confirmed',
+        'body': '${requester['fullName']} confirmed $title as completed. Your payout is ready for release.',
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+
+  static Future<void> submitRequesterReviewForRunner({
+    required String errandId,
+    required int rating,
+    String comment = '',
+  }) async {
+    final requester = await _currentUserData();
+    final errandRef = errands.doc(errandId);
+    final errandSnapshot = await errandRef.get();
+    final data = errandSnapshot.data() ?? <String, dynamic>{};
+
+    if ((data['requesterId'] ?? '').toString() != requester['uid'].toString()) {
+      throw Exception('Only the requester can review this errand.');
+    }
+
+    if ((data['status'] ?? '').toString() != 'completed') {
+      throw Exception('You can review only after confirming completion.');
+    }
+
+    if (data['requesterReviewSubmitted'] == true) {
+      throw Exception('You already reviewed this errand.');
+    }
+
+    final runnerId = (data['runnerId'] ?? '').toString();
+    final runnerName = (data['runnerName'] ?? 'Runner').toString();
+    if (runnerId.isEmpty) {
+      throw Exception('No runner found for this errand.');
+    }
+
+    await rateUser(
+      ratedUserId: runnerId,
+      rating: rating,
+      errandId: errandId,
+      comment: comment,
+    );
+
+    await errandRef.set({
+      'requesterReviewSubmitted': true,
+      'requesterReviewRating': rating,
+      'requesterReviewComment': comment.trim(),
+      'requesterReviewedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    await notifications.add({
+      'receiverId': runnerId,
+      'receiverName': runnerName,
+      'senderId': requester['uid'],
+      'senderName': requester['fullName'],
+      'errandId': errandId,
+      'type': 'new_review',
+      'title': 'You received a new review',
+      'body': '${requester['fullName']} rated your completed errand $rating/5.',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   static Stream<QuerySnapshot<Map<String, dynamic>>>

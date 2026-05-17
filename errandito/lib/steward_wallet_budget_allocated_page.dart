@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import 'services/auth_service.dart';
 
 class StewardWalletBudgetAllocatedPage extends StatelessWidget {
   const StewardWalletBudgetAllocatedPage({super.key});
@@ -6,380 +9,463 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
   static const Color background = Color(0xFFF8F9FD);
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
-  static const Color green = Color(0xFF004035);
-  static const Color darkGreen = Color(0xFF17584C);
-  static const Color darkText = Color(0xFF191C1E);
   static const Color bodyText = Color(0xFF40484E);
   static const Color mutedText = Color(0xFF71787E);
   static const Color panel = Color(0xFFF2F3F7);
+  static const Color borderColor = Color(0xFFE6E9EF);
 
-  static const List<ActivityItem> activities = [
-    ActivityItem(
-      title: 'Gourmet Grocery Run',
-      subtitle: 'Allocated Budget • 12 mins ago',
-      amount: '+\$42.50',
-      tag: 'Budget Load',
-      tone: ActivityTone.positive,
-    ),
-    ActivityItem(
-      title: 'Task Completion Bonus',
-      subtitle: 'Personal Earnings • Yesterday',
-      amount: '+\$15.00',
-      tag: 'Payout',
-      tone: ActivityTone.positive,
-    ),
-    ActivityItem(
-      title: 'Bank Transfer',
-      subtitle: 'External Account • Oct 24',
-      amount: '-\$500.00',
-      tag: 'Withdrawal',
-      tone: ActivityTone.negative,
-    ),
-  ];
+  double _moneyFrom(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    final clean = raw?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '';
+    return double.tryParse(clean) ?? 0;
+  }
+
+  String _peso(double value) => '₱${value.toStringAsFixed(2)}';
+
+  Map<String, dynamic> _statsFromErrands(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    double earnings = 0;
+    int completed = 0;
+    int active = 0;
+
+    for (final doc in docs) {
+      final data = doc.data();
+      final status = (data['status'] ?? '').toString();
+      final isCompleted = status == 'completed';
+      final isActive = {
+        'accepted',
+        'in_progress',
+        'on_the_way',
+        'delivered',
+      }.contains(status);
+
+      if (isCompleted) {
+        completed++;
+        earnings += _moneyFrom(
+          data['runnerPayout'] ?? data['runnerFee'] ?? data['budget'] ?? data['pay'],
+        );
+      }
+      if (isActive) active++;
+    }
+
+    return {
+      'earnings': earnings,
+      'completed': completed,
+      'active': active,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
+    final String? uid = AuthService.currentUserId;
+
     return Scaffold(
       backgroundColor: background,
       body: Stack(
         children: [
-          Column(
-            children: [
-              SafeArea(
-                bottom: false,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  color: const Color(0xFFF8FAFC).withValues(alpha: 0.90),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: Image.asset(
-                                'assets/images/profile.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: const Color(0xFFD6E5EC),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: navy,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Hi, Bronny',
-                            style: TextStyle(
-                              color: navy,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.notifications_none,
-                          color: navy,
-                          size: 22,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 112),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: AuthService.currentUserStream(),
+                    builder: (context, userSnapshot) {
+                      final user = userSnapshot.data?.data() ?? <String, dynamic>{};
+                      final name = (user['fullName'] ??
+                              AuthService.currentUser?.displayName ??
+                              AuthService.currentUser?.email?.split('@').first ??
+                              'Runner')
+                          .toString();
+                      final email = (user['email'] ?? AuthService.currentUser?.email ?? '')
+                          .toString();
+                      final rating = user['averageRating'];
+                      final ratingCount = user['ratingCount'];
+                      final ratingText = rating is num && rating > 0
+                          ? rating.toStringAsFixed(1)
+                          : 'No ratings';
+                      final ratingCountText = ratingCount is num
+                          ? '${ratingCount.toInt()} review${ratingCount.toInt() == 1 ? '' : 's'}'
+                          : '0 reviews';
+                      final verified = user['isVerified'] == true;
 
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 124),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 720),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Profile',
-                            style: TextStyle(
-                              color: navy,
-                              fontSize: 38,
-                              fontWeight: FontWeight.w800,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Ratings, verification, earnings history, premium, and logout.',
-                            style: TextStyle(
-                              color: bodyText,
-                              fontSize: 16,
-                              height: 1.5,
-                            ),
-                          ),
+                      if (uid == null) {
+                        return const _ProfileMessage(
+                          title: 'Please sign in',
+                          message: 'Your runner profile will appear after signing in.',
+                        );
+                      }
 
-                          const SizedBox(height: 18),
+                      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('errands')
+                            .where('runnerId', isEqualTo: uid)
+                            .snapshots(),
+                        builder: (context, errandSnapshot) {
+                          final docs = errandSnapshot.data?.docs ?? [];
+                          final stats = _statsFromErrands(docs);
+                          final recentCompleted = docs.where((doc) {
+                            return (doc.data()['status'] ?? '').toString() == 'completed';
+                          }).toList();
 
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(22),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF191C1E,
-                                  ).withValues(alpha: 0.06),
-                                  blurRadius: 32,
-                                  offset: const Offset(0, 16),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'EARNINGS HISTORY',
-                                  style: TextStyle(
-                                    color: bodyText,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.72,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  '₱1,284.50',
-                                  style: TextStyle(
-                                    color: navy,
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.1,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: DecoratedBox(
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 46,
+                                    height: 46,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      gradient: const LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [navy, teal],
+                                      color: navy.withOpacity(0.10),
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    child: Text(
+                                      name.trim().isEmpty
+                                          ? 'R'
+                                          : name.trim()[0].toUpperCase(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: navy,
+                                        fontSize: 20,
+                                        height: 2.25,
+                                        fontWeight: FontWeight.w900,
                                       ),
                                     ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(12),
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/errand-execution-payment',
-                                          );
-                                        },
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(14),
-                                          child: Text(
-                                            'View Earnings',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: navy,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
                                           ),
                                         ),
-                                      ),
+                                        Text(
+                                          email,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: mutedText,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                  IconButton(
+                                    tooltip: 'Sign out',
+                                    onPressed: () async {
+                                      await AuthService.signOut();
+                                      if (!context.mounted) return;
+                                      Navigator.pushNamedAndRemoveUntil(
+                                        context,
+                                        '/login',
+                                        (route) => false,
+                                      );
+                                    },
+                                    icon: const Icon(Icons.logout_rounded, color: navy),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+                              const Text(
+                                'Runner Profile',
+                                style: TextStyle(
+                                  color: navy,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.05,
                                 ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(22),
-                            decoration: BoxDecoration(
-                              color: navy,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: navy.withValues(alpha: 0.12),
-                                  blurRadius: 32,
-                                  offset: const Offset(0, 16),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Your real earnings, ratings, active tasks, and account details.',
+                                style: TextStyle(
+                                  color: bodyText,
+                                  fontSize: 14,
+                                  height: 1.45,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'VERIFICATION',
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.75,
-                                        ),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.72,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFB1EFDE),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Text(
-                                        'Verified',
-                                        style: TextStyle(
-                                          color: Color(0xFF00201A),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
+                              ),
+                              const SizedBox(height: 18),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(22),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(28),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [navy, teal],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: navy.withOpacity(0.16),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 16),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  '4.9 / 5.0',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.1,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            verified ? 'Verified Runner' : 'Runner Account',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.85),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 7,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.14),
+                                            borderRadius: BorderRadius.circular(999),
+                                          ),
+                                          child: Text(
+                                            verified ? 'Verified' : 'Pending',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      _peso(stats['earnings'] as double),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 40,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.6,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Total completed-task earnings',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.78),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _ProfileMetric(
+                                            value: '${stats['completed']}',
+                                            label: 'Completed',
+                                            light: true,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _ProfileMetric(
+                                            value: '${stats['active']}',
+                                            label: 'Active',
+                                            light: true,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _ProfileMetric(
+                                            value: ratingText,
+                                            label: 'Rating',
+                                            light: true,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Ratings and trust status are visible to requesters.',
-                                  style: TextStyle(
-                                    color: Color(0xFFC7E7FF),
-                                    fontSize: 14,
-                                    height: 1.45,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _InfoCard(
+                                      icon: Icons.star_rounded,
+                                      title: 'Rating',
+                                      value: ratingText,
+                                      subtitle: ratingCountText,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Premium options available',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.70),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.4,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _InfoCard(
+                                      icon: Icons.task_alt_rounded,
+                                      title: 'Active Tasks',
+                                      value: '${stats['active']}',
+                                      subtitle: 'Currently assigned',
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 18),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
+                                ],
+                              ),
+                              const SizedBox(height: 16),
                               const Text(
-                                'Activity History',
+                                'Reviews from requesters',
                                 style: TextStyle(
                                   color: navy,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.1,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              TextButton(
-                                onPressed: () {},
-                                child: const Text(
-                                  'View All',
-                                  style: TextStyle(
-                                    color: navy,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              const SizedBox(height: 10),
+                              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('reviews')
+                                    .where('ratedUserId', isEqualTo: uid)
+                                    .snapshots(),
+                                builder: (context, reviewSnapshot) {
+                                  if (reviewSnapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const _ProfilePanel(
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+
+                                  final reviews =
+                                      reviewSnapshot.data?.docs.toList() ?? [];
+
+                                  reviews.sort((a, b) {
+                                    final ta = a.data()['createdAt'];
+                                    final tb = b.data()['createdAt'];
+                                    if (ta is Timestamp && tb is Timestamp) {
+                                      return tb.compareTo(ta);
+                                    }
+                                    return 0;
+                                  });
+
+                                  if (reviews.isEmpty) {
+                                    return const _ProfileMessage(
+                                      title: 'No reviews yet',
+                                      message:
+                                          'Requester reviews will appear here after completed errands.',
+                                    );
+                                  }
+
+                                  return Column(
+                                    children: reviews.take(5).map((doc) {
+                                      final data = doc.data();
+                                      final reviewer =
+                                          (data['reviewerName'] ?? 'Requester')
+                                              .toString();
+                                      final rating =
+                                          (data['rating'] as num?)?.toInt() ?? 0;
+                                      final comment =
+                                          (data['comment'] ?? '').toString();
+
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 10),
+                                        child: _ReviewTile(
+                                          reviewer: reviewer,
+                                          rating: rating,
+                                          comment: comment,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              _ActionTile(
+                                icon: Icons.receipt_long_rounded,
+                                title: 'View active task',
+                                subtitle: 'Open your current accepted errand.',
+                                onTap: () => Navigator.pushReplacementNamed(
+                                  context,
+                                  '/execution-status',
                                 ),
                               ),
+                              const SizedBox(height: 10),
+                              _ActionTile(
+                                icon: Icons.search_rounded,
+                                title: 'Find gigs',
+                                subtitle: 'Go back to available errands.',
+                                onTap: () => Navigator.pushReplacementNamed(
+                                  context,
+                                  '/gig-finder',
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              const Text(
+                                'Recent completed errands',
+                                style: TextStyle(
+                                  color: navy,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              if (errandSnapshot.connectionState ==
+                                  ConnectionState.waiting)
+                                const _ProfilePanel(
+                                  child: Center(child: CircularProgressIndicator()),
+                                )
+                              else if (recentCompleted.isEmpty)
+                                const _ProfileMessage(
+                                  title: 'No completed errands yet',
+                                  message:
+                                      'Completed errands and real earnings will appear here.',
+                                )
+                              else
+                                ...recentCompleted.take(5).map((doc) {
+                                  final data = doc.data();
+                                  final title = (data['serviceType'] ??
+                                          data['title'] ??
+                                          'Errand')
+                                      .toString();
+                                  final requester = (data['requesterName'] ??
+                                          'Requester')
+                                      .toString();
+                                  final pay = _moneyFrom(data['runnerPayout'] ??
+                                      data['runnerFee'] ??
+                                      data['budget'] ??
+                                      data['pay']);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _CompletedTile(
+                                      title: title,
+                                      subtitle: requester,
+                                      amount: _peso(pay),
+                                    ),
+                                  );
+                                }),
                             ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Column(
-                            children: activities.map((item) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: HistoryItem(activity: item),
-                              );
-                            }).toList(),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: darkGreen,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Premium and Logout',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Access premium convenience features and sign out from profile.',
-                                  style: TextStyle(
-                                    color: Color(0xFF95D3C3),
-                                    fontSize: 14,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-
           const Align(
             alignment: Alignment.bottomCenter,
             child: RunnerBottomNav(active: 'profile'),
@@ -390,87 +476,120 @@ class StewardWalletBudgetAllocatedPage extends StatelessWidget {
   }
 }
 
-class HistoryItem extends StatelessWidget {
-  final ActivityItem activity;
+class _ReviewTile extends StatelessWidget {
+  final String reviewer;
+  final int rating;
+  final String comment;
 
-  const HistoryItem({super.key, required this.activity});
-
-  static const Color darkText = Color(0xFF191C1E);
-  static const Color bodyText = Color(0xFF40484E);
-  static const Color mutedText = Color(0xFF71787E);
-  static const Color green = Color(0xFF004035);
+  const _ReviewTile({
+    required this.reviewer,
+    required this.rating,
+    required this.comment,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final bool isNegative = activity.tone == ActivityTone.negative;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
+    return _ProfilePanel(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activity.title,
-                  style: const TextStyle(
-                    color: darkText,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  activity.subtitle,
-                  style: const TextStyle(
-                    color: mutedText,
-                    fontSize: 13,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: [
-              Text(
-                activity.amount,
-                style: TextStyle(
-                  color: isNegative ? const Color(0xFF9B1C1C) : green,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Text(
+                  reviewer,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF003C56),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isNegative
-                      ? const Color(0xFFF3D7D7)
-                      : const Color(0xFFB1EFDE),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  activity.tag,
-                  style: TextStyle(
-                    color: isNegative
-                        ? const Color(0xFF7A1212)
-                        : const Color(0xFF00201A),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              Row(
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < rating
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    color: const Color(0xFF005477),
+                    size: 18,
+                  );
+                }),
               ),
             ],
+          ),
+          if (comment.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              comment,
+              style: const TextStyle(
+                color: Color(0xFF40484E),
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfilePanel extends StatelessWidget {
+  final Widget child;
+
+  const _ProfilePanel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE6E9EF)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ProfileMessage extends StatelessWidget {
+  final String title;
+  final String message;
+
+  const _ProfileMessage({required this.title, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfilePanel(
+      child: Column(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFF003C56), size: 34),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF003C56),
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF71787E),
+              fontSize: 12,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -478,23 +597,257 @@ class HistoryItem extends StatelessWidget {
   }
 }
 
-class ActivityItem {
+class _ProfileMetric extends StatelessWidget {
+  final String value;
+  final String label;
+  final bool light;
+
+  const _ProfileMetric({required this.value, required this.label, this.light = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: light ? Colors.white.withOpacity(0.12) : const Color(0xFFF2F3F7),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: light ? Colors.white : const Color(0xFF003C56),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: light ? Colors.white.withOpacity(0.76) : const Color(0xFF71787E),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final String subtitle;
+
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfilePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF005477), size: 22),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF71787E),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF003C56),
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF71787E),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  State<_ActionTile> createState() => _ActionTileState();
+}
+
+class _ActionTileState extends State<_ActionTile> {
+  bool hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: hovered ? const Color(0xFFEAF3F6) : Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFE6E9EF)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF003C56).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(widget.icon, color: const Color(0xFF003C56)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Color(0xFF003C56),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.subtitle,
+                        style: const TextStyle(
+                          color: Color(0xFF71787E),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_rounded, color: Color(0xFF005477)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompletedTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final String amount;
-  final String tag;
-  final ActivityTone tone;
 
-  const ActivityItem({
+  const _CompletedTile({
     required this.title,
     required this.subtitle,
     required this.amount,
-    required this.tag,
-    required this.tone,
   });
-}
 
-enum ActivityTone { positive, negative }
+  @override
+  Widget build(BuildContext context) {
+    return _ProfilePanel(
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF3F6),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.check_circle_rounded, color: Color(0xFF005477)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF003C56),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF71787E),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            amount,
+            style: const TextStyle(
+              color: Color(0xFF003C56),
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class RunnerBottomNav extends StatelessWidget {
   final String active;
@@ -502,110 +855,142 @@ class RunnerBottomNav extends StatelessWidget {
   const RunnerBottomNav({super.key, required this.active});
 
   static const Color navy = Color(0xFF003C56);
-  static const Color muted = Color(0xFF71787E);
+  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 78,
-      padding: const EdgeInsets.only(top: 8, bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, -8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          BottomNavItem(
-            icon: Icons.home_outlined,
-            label: 'Home',
-            isActive: active == 'home',
-            onTap: () {
-              Navigator.pushNamed(context, '/activity-planner');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.search_outlined,
-            label: 'Errands',
-            isActive: active == 'errands',
-            onTap: () {
-              Navigator.pushNamed(context, '/gig-finder');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.assignment_outlined,
-            label: 'Tasks',
-            isActive: active == 'tasks',
-            onTap: () {
-              Navigator.pushNamed(context, '/execution-status');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.chat_bubble_outline,
-            label: 'Messages',
-            isActive: active == 'messages',
-            onTap: () {
-              Navigator.pushNamed(context, '/execution-messaging');
-            },
-          ),
-          BottomNavItem(
-            icon: Icons.person_outline,
-            label: 'Profile',
-            isActive: active == 'profile',
-            onTap: () {},
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      child: Container(
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.search_outlined,
+                activeIcon: Icons.search_rounded,
+                label: 'Gigs',
+                isActive: active == 'gigs',
+                onTap: () => Navigator.pushReplacementNamed(context, '/gig-finder'),
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: 'Tasks',
+                isActive: active == 'tasks',
+                onTap: () => Navigator.pushReplacementNamed(context, '/execution-status'),
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.chat_bubble_outline_rounded,
+                activeIcon: Icons.chat_bubble_rounded,
+                label: 'Messages',
+                isActive: active == 'messages',
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-messages'),
+              ),
+            ),
+            Expanded(
+              child: RunnerNavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profile',
+                isActive: active == 'profile',
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-profile'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class BottomNavItem extends StatelessWidget {
+class RunnerNavItem extends StatefulWidget {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final bool isActive;
   final VoidCallback onTap;
 
-  const BottomNavItem({
+  const RunnerNavItem({
     super.key,
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.isActive,
     required this.onTap,
   });
 
+  @override
+  State<RunnerNavItem> createState() => _RunnerNavItemState();
+}
+
+class _RunnerNavItemState extends State<RunnerNavItem> {
+  bool hovered = false;
   static const Color navy = Color(0xFF003C56);
-  static const Color muted = Color(0xFF71787E);
+  static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    final Color color = isActive ? navy : muted;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+    final activeOrHover = widget.isActive || hovered;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : hovered
+                    ? const Color(0xFFEAF3F6)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                activeOrHover ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                  fontSize: 10,
+                  fontWeight: activeOrHover ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

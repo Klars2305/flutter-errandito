@@ -74,7 +74,11 @@ class LiveTrackingPage extends StatelessWidget {
                       final activeDocs = docs.where((doc) {
                         final status = (doc.data()['status'] ?? '').toString();
                         return status == 'accepted' ||
+                            status == 'in_progress' ||
+                            status == 'on_the_way' ||
+                            status == 'delivered' ||
                             status == 'booked_paid' ||
+                            status == 'paid_waiting_runner' ||
                             status == 'paid' ||
                             status == 'booked' ||
                             status == 'pending_payment' ||
@@ -143,13 +147,171 @@ class _RealActivityContent extends StatelessWidget {
   static const Color bodyText = LiveTrackingPage.bodyText;
   static const Color lightPanel = LiveTrackingPage.lightPanel;
 
-  String _statusLabel(String status, String paymentStatus) {
+  String _statusLabel(
+    String status,
+    String paymentStatus, [
+    String paymentMethod = '',
+  ]) {
     if (status == 'accepted') return 'Accepted by Runner';
-    if (status == 'booked_paid') return 'Booked and Paid';
+    if (status == 'in_progress') return 'Errand In Progress';
+    if (status == 'on_the_way') return 'Runner On The Way';
+    if (status == 'delivered') return 'Delivered • Awaiting Your Confirmation';
+    if (status == 'booked_paid') {
+      if (paymentMethod == 'cod' && paymentStatus == 'cod_pending') {
+        return 'Booked • Cash on Delivery';
+      }
+      return paymentStatus == 'paid'
+          ? 'Booked • Online Paid'
+          : 'Booked • Waiting for Payment';
+    }
+    if (status == 'paid_waiting_runner') return 'Paid • Waiting for Runner';
     if (status == 'paid') return 'Paid • Waiting for Runner';
     if (status == 'pending_payment') return 'Waiting for Payment';
     if (status == 'completed') return 'Completed';
     return status.isEmpty ? 'Active' : status;
+  }
+
+  Future<void> _showReviewDialog({
+    required BuildContext context,
+    required String errandId,
+    required String runnerName,
+  }) async {
+    int selectedRating = 5;
+    final commentController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isSubmitting = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: const Text(
+                'Review Runner',
+                style: TextStyle(
+                  color: Color(0xFF003C56),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'How was your errand with $runnerName?',
+                    style: const TextStyle(
+                      color: Color(0xFF40484E),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final star = index + 1;
+                      return IconButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () {
+                                setDialogState(() {
+                                  selectedRating = star;
+                                });
+                              },
+                        icon: Icon(
+                          star <= selectedRating
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
+                          color: const Color(0xFF005477),
+                          size: 34,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: commentController,
+                    minLines: 3,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'Leave a comment for the runner...',
+                      filled: true,
+                      fillColor: const Color(0xFFF2F3F7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                        },
+                  child: const Text('Skip'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF003C56),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isSubmitting = true;
+                          });
+
+                          try {
+                            await ErrandService.submitRequesterReviewForRunner(
+                              errandId: errandId,
+                              rating: selectedRating,
+                              comment: commentController.text,
+                            );
+
+                            if (!dialogContext.mounted) return;
+                            Navigator.pop(dialogContext);
+
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Review submitted.'),
+                              ),
+                            );
+                          } catch (e) {
+                            setDialogState(() {
+                              isSubmitting = false;
+                            });
+
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Unable to submit review: $e'),
+                              ),
+                            );
+                          }
+                        },
+                  child: Text(isSubmitting ? 'Submitting...' : 'Submit Review'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    commentController.dispose();
   }
 
   @override
@@ -167,11 +329,12 @@ class _RealActivityContent extends StatelessWidget {
     final budget = (data['budget'] ?? data['pay'] ?? '₱0').toString();
     final status = (data['status'] ?? '').toString();
     final paymentStatus = (data['paymentStatus'] ?? 'unpaid').toString();
+    final paymentMethod = (data['paymentMethod'] ?? '').toString();
     final serviceLat = (data['serviceLat'] as num?)?.toDouble();
     final serviceLng = (data['serviceLng'] as num?)?.toDouble();
     final runnerLat = (data['runnerLat'] as num?)?.toDouble();
     final runnerLng = (data['runnerLng'] as num?)?.toDouble();
-    final label = _statusLabel(status, paymentStatus);
+    final label = _statusLabel(status, paymentStatus, paymentMethod);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,31 +492,108 @@ class _RealActivityContent extends StatelessWidget {
               JourneyStep(done: true, label: 'Errand posted by requester'),
               JourneyStep(
                 done: paymentStatus == 'paid',
-                label: 'Payment secured',
+                label: paymentStatus == 'paid'
+                    ? 'Online Payment Simulation confirmed'
+                    : 'Payment confirmed',
               ),
               JourneyStep(
                 done: runner != 'No runner assigned yet',
                 label: 'Runner booked',
               ),
               JourneyStep(
-                done: status == 'accepted' || status == 'completed',
+                done: status == 'accepted' ||
+                    status == 'in_progress' ||
+                    status == 'on_the_way' ||
+                    status == 'delivered' ||
+                    status == 'completed',
                 label: 'Runner accepted the errand',
               ),
               JourneyStep(
+                done: status == 'in_progress' ||
+                    status == 'on_the_way' ||
+                    status == 'delivered' ||
+                    status == 'completed',
+                label: 'Errand started',
+              ),
+              JourneyStep(
+                done: status == 'delivered' || status == 'completed',
+                label: 'Runner marked errand as delivered',
+              ),
+              JourneyStep(
                 done: status == 'completed',
-                label: 'Errand completed',
+                label: 'Requester confirmed completion',
               ),
             ],
           ),
         ),
         const SizedBox(height: 18),
+        if (status == 'delivered')
+          SizedBox(
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(colors: [Color(0xFF004035), Color(0xFF005477)]),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () async {
+                    try {
+                      await ErrandService.confirmRequesterCompletion(
+                        errandId: doc.id,
+                      );
+
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Errand confirmed as completed.'),
+                        ),
+                      );
+
+                      if (runner != 'No runner assigned yet' &&
+                          data['requesterReviewSubmitted'] != true) {
+                        await _showReviewDialog(
+                          context: context,
+                          errandId: doc.id,
+                          runnerName: runner,
+                        );
+                      }
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Unable to confirm completion: $e'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(17),
+                    child: Text(
+                      'Confirm Completion',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (status == 'delivered') const SizedBox(height: 12),
         if (runner != 'No runner assigned yet')
           SizedBox(
             width: double.infinity,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
-                gradient: const LinearGradient(colors: [navy, teal]),
+                gradient: const LinearGradient(colors: [Color(0xFF003C56), Color(0xFF005477)]),
               ),
               child: Material(
                 color: Colors.transparent,
@@ -821,7 +1061,7 @@ class _EmptyActivity extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(colors: [navy, teal]),
+                  gradient: const LinearGradient(colors: [Color(0xFF003C56), Color(0xFF005477)]),
                 ),
                 child: Material(
                   color: Colors.transparent,

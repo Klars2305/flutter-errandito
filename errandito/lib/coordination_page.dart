@@ -785,6 +785,9 @@ class RunnerBottomNav extends StatelessWidget {
 
   const RunnerBottomNav({super.key, required this.active});
 
+  static const Color navy = Color(0xFF003C56);
+  static const Color inactive = Color(0xFF94A3B8);
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -808,16 +811,7 @@ class RunnerBottomNav extends StatelessWidget {
           children: [
             Expanded(
               child: RunnerNavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
-                isActive: active == 'home',
-                onTap: () => Navigator.pushReplacementNamed(context, '/runner-home'),
-              ),
-            ),
-            Expanded(
-              child: RunnerNavItem(
-                icon: Icons.search_rounded,
+                icon: Icons.search_outlined,
                 activeIcon: Icons.search_rounded,
                 label: 'Gigs',
                 isActive: active == 'gigs',
@@ -826,20 +820,20 @@ class RunnerBottomNav extends StatelessWidget {
             ),
             Expanded(
               child: RunnerNavItem(
-                icon: Icons.chat_bubble_outline_rounded,
-                activeIcon: Icons.chat_bubble_rounded,
-                label: 'Messages',
-                isActive: active == 'messages',
-                onTap: () => Navigator.pushReplacementNamed(context, '/runner-messages'),
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: 'Tasks',
+                isActive: active == 'tasks',
+                onTap: () => Navigator.pushReplacementNamed(context, '/execution-status'),
               ),
             ),
             Expanded(
               child: RunnerNavItem(
-                icon: Icons.assignment_outlined,
-                activeIcon: Icons.assignment_rounded,
-                label: 'Tasks',
-                isActive: active == 'tasks',
-                onTap: () => Navigator.pushReplacementNamed(context, '/execution-status'),
+                icon: Icons.chat_bubble_outline_rounded,
+                activeIcon: Icons.chat_bubble_rounded,
+                label: 'Messages',
+                isActive: active == 'messages' || active == 'runner-messages',
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-messages'),
               ),
             ),
             Expanded(
@@ -848,7 +842,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
                 isActive: active == 'profile',
-                onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-profile'),
               ),
             ),
           ],
@@ -858,7 +852,7 @@ class RunnerBottomNav extends StatelessWidget {
   }
 }
 
-class RunnerNavItem extends StatelessWidget {
+class RunnerNavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -874,46 +868,63 @@ class RunnerNavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<RunnerNavItem> createState() => _RunnerNavItemState();
+}
+
+class _RunnerNavItemState extends State<RunnerNavItem> {
+  bool hovered = false;
   static const Color navy = Color(0xFF003C56);
   static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isActive ? navy : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? Colors.white : inactive,
-              size: 21,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactive,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 1,
+    final bool activeOrHover = widget.isActive || hovered;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : hovered
+                    ? const Color(0xFFEAF3F6)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                activeOrHover ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                  fontSize: 10,
+                  fontWeight: activeOrHover ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+

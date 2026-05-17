@@ -566,19 +566,11 @@ class RunnerBottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           BottomNavItem(
-            icon: Icons.home_outlined,
-            label: 'Home',
-            isActive: active == 'home',
-            onTap: () {
-              Navigator.pushNamed(context, '/activity-planner');
-            },
-          ),
-          BottomNavItem(
             icon: Icons.search_outlined,
-            label: 'Errands',
-            isActive: active == 'errands',
+            label: 'Gigs',
+            isActive: active == 'gigs',
             onTap: () {
-              Navigator.pushNamed(context, '/gig-finder');
+              Navigator.pushReplacementNamed(context, '/gig-finder');
             },
           ),
           BottomNavItem(
@@ -586,7 +578,7 @@ class RunnerBottomNav extends StatelessWidget {
             label: 'Status',
             isActive: active == 'status',
             onTap: () {
-              Navigator.pushNamed(context, '/execution-status');
+              Navigator.pushReplacementNamed(context, '/execution-status');
             },
           ),
           BottomNavItem(
@@ -594,7 +586,7 @@ class RunnerBottomNav extends StatelessWidget {
             label: 'Earnings',
             isActive: active == 'earnings',
             onTap: () {
-              Navigator.pushNamed(context, '/payment-earnings');
+              Navigator.pushReplacementNamed(context, '/payment-earnings');
             },
           ),
         ],

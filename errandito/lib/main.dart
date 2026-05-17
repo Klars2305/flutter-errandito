@@ -120,8 +120,8 @@ class ErrandditoApp extends StatelessWidget {
 
         // Runner Flow
         '/gig-finder': (context) => const GigFinderJobListingsPage(),
-        '/runner-home': (context) => const ActivityPlannerPage(),
-        '/runner-dashboard': (context) => const ActivityPlannerPage(),
+        '/runner-home': (context) => const GigFinderJobListingsPage(),
+        '/runner-dashboard': (context) => const GigFinderJobListingsPage(),
         '/available-errands': (context) => const GigFinderJobListingsPage(),
 
         '/execution-status': (context) => const ExecutionStatusUpdatePage(),

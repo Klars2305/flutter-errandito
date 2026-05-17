@@ -17,6 +17,10 @@ class SelectHelperPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final String? selectedErrandId =
+        args is String && args.isNotEmpty ? args : null;
+
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(
@@ -149,14 +153,26 @@ class SelectHelperPage extends StatelessWidget {
                                   onBook: () async {
                                     final data = doc.data();
                                     try {
-                                      await ErrandService.bookRunner(
-                                        runnerId: doc.id,
-                                        runnerName:
-                                            (data['fullName'] ?? 'Runner')
-                                                .toString(),
-                                        runnerRole: (data['role'] ?? 'runner')
-                                            .toString(),
-                                      );
+                                      if (selectedErrandId != null) {
+                                        await ErrandService.bookRunnerForErrand(
+                                          errandId: selectedErrandId,
+                                          runnerId: doc.id,
+                                          runnerName:
+                                              (data['fullName'] ?? 'Runner')
+                                                  .toString(),
+                                          runnerRole: (data['role'] ?? 'runner')
+                                              .toString(),
+                                        );
+                                      } else {
+                                        await ErrandService.bookRunner(
+                                          runnerId: doc.id,
+                                          runnerName:
+                                              (data['fullName'] ?? 'Runner')
+                                                  .toString(),
+                                          runnerRole: (data['role'] ?? 'runner')
+                                              .toString(),
+                                        );
+                                      }
                                       if (!context.mounted) return;
                                       ScaffoldMessenger.of(
                                         context,
@@ -170,6 +186,7 @@ class SelectHelperPage extends StatelessWidget {
                                       Navigator.pushNamed(
                                         context,
                                         '/reviewpay',
+                                        arguments: selectedErrandId,
                                       );
                                     } catch (e) {
                                       if (!context.mounted) return;

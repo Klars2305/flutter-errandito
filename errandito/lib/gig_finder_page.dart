@@ -57,11 +57,18 @@ class _GigFinderJobListingsPageState extends State<GigFinderJobListingsPage> {
           final String paymentStatus = (data['paymentStatus'] ?? '').toString();
           final String? assignedRunnerId = data['runnerId']?.toString();
 
+          final String paymentMethod = (data['paymentMethod'] ?? '').toString();
+
+          final bool isPaymentConfirmed =
+              paymentStatus == 'paid' ||
+              (paymentMethod == 'cod' && paymentStatus == 'cod_pending');
           final bool isPaidVisible =
-              paymentStatus == 'paid' &&
+              isPaymentConfirmed &&
               (status == 'paid' ||
+                  status == 'paid_waiting_runner' ||
                   status == 'booked_paid' ||
-                  status == 'posted');
+                  status == 'posted' ||
+                  status == 'pending_payment');
           final bool isForThisRunner =
               assignedRunnerId == null ||
               assignedRunnerId.isEmpty ||
@@ -325,7 +332,7 @@ class _GigFinderJobListingsPageState extends State<GigFinderJobListingsPage> {
                     children: [
                       RunnerHeader(
                         onProfileTap: () {
-                          Navigator.pushNamed(context, '/profile');
+                          Navigator.pushReplacementNamed(context, '/runner-profile');
                         },
                         onNotificationTap: showRunnerNotifications,
                       ),
@@ -435,118 +442,121 @@ class RunnerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: onProfileTap,
-          borderRadius: BorderRadius.circular(18),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: Image.asset(
-              'assets/images/profile.png',
-              width: 46,
-              height: 46,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 46,
-                  height: 46,
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: AuthService.currentUserStream(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() ?? <String, dynamic>{};
+        final name = (data['fullName'] ??
+                AuthService.currentUser?.displayName ??
+                AuthService.currentUser?.email?.split('@').first ??
+                'Runner')
+            .toString();
+        final email = (data['email'] ?? AuthService.currentUser?.email ?? '')
+            .toString();
+        final initial = name.trim().isEmpty ? 'R' : name.trim()[0].toUpperCase();
+        final verified = data['isVerified'] == true;
+
+        return Row(
+          children: [
+            InkWell(
+              onTap: onProfileTap,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: navy.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: navy,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hi, $name',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: navy,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    email.isEmpty ? 'Find errands and earn today.' : email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: mutedText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+              decoration: BoxDecoration(
+                color: teal.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.verified_rounded, color: teal, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    verified ? 'Verified' : 'Runner',
+                    style: const TextStyle(
+                      color: teal,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: onNotificationTap,
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: navy.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(18),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: borderColor),
                   ),
                   child: const Icon(
-                    Icons.person_rounded,
+                    Icons.notifications_none_rounded,
                     color: navy,
-                    size: 24,
+                    size: 20,
                   ),
-                );
-              },
-            ),
-          ),
-        ),
-
-        const SizedBox(width: 12),
-
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hi, Runner',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: navy,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.2,
                 ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'Find errands and earn today.',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: mutedText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(width: 10),
-
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-          decoration: BoxDecoration(
-            color: teal.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.verified_rounded, color: teal, size: 14),
-              SizedBox(width: 4),
-              Text(
-                'Verified',
-                style: TextStyle(
-                  color: teal,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(width: 8),
-
-        Material(
-          color: Colors.white,
-          shape: const CircleBorder(),
-          child: InkWell(
-            onTap: onNotificationTap,
-            customBorder: const CircleBorder(),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: borderColor),
-              ),
-              child: const Icon(
-                Icons.notifications_none_rounded,
-                color: navy,
-                size: 20,
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -557,8 +567,83 @@ class RunnerHeroSummary extends StatelessWidget {
   static const Color navy = Color(0xFF003C56);
   static const Color teal = Color(0xFF005477);
 
+  double _moneyFrom(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    final clean = raw?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '';
+    return double.tryParse(clean) ?? 0;
+  }
+
+  String _peso(double value) => '₱${value.toStringAsFixed(2)}';
+
   @override
   Widget build(BuildContext context) {
+    final uid = AuthService.currentUserId;
+    if (uid == null) {
+      return _summaryCard(
+        earnings: '₱0.00',
+        completed: '0',
+        open: '0',
+        rating: '—',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('errands').snapshots(),
+      builder: (context, errandSnapshot) {
+        final allDocs = errandSnapshot.data?.docs ?? [];
+        double earnings = 0;
+        int completed = 0;
+        int open = 0;
+
+        for (final doc in allDocs) {
+          final data = doc.data();
+          final status = (data['status'] ?? '').toString();
+          final runnerId = data['runnerId']?.toString();
+          final visible = data['visibleToRunners'] == true;
+          final paymentStatus = (data['paymentStatus'] ?? '').toString();
+
+          if (runnerId == uid && status == 'completed') {
+            completed++;
+            earnings += _moneyFrom(
+              data['runnerPayout'] ?? data['runnerFee'] ?? data['budget'] ?? data['pay'],
+            );
+          }
+
+          if (visible == true && paymentStatus == 'paid') {
+            final assignedRunnerId = data['runnerId']?.toString();
+            if (assignedRunnerId == null || assignedRunnerId.isEmpty || assignedRunnerId == uid) {
+              open++;
+            }
+          }
+        }
+
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: AuthService.currentUserStream(),
+          builder: (context, userSnapshot) {
+            final user = userSnapshot.data?.data() ?? <String, dynamic>{};
+            final ratingRaw = user['averageRating'];
+            final rating = ratingRaw is num && ratingRaw > 0
+                ? ratingRaw.toStringAsFixed(1)
+                : '—';
+
+            return _summaryCard(
+              earnings: _peso(earnings),
+              completed: '$completed',
+              open: '$open',
+              rating: rating,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _summaryCard({
+    required String earnings,
+    required String completed,
+    required String open,
+    required String rating,
+  }) {
     return Container(
       width: double.infinity,
       height: 154,
@@ -572,7 +657,7 @@ class RunnerHeroSummary extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: navy.withValues(alpha: 0.14),
+            color: navy.withOpacity(0.14),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -590,7 +675,6 @@ class RunnerHeroSummary extends StatelessWidget {
               },
             ),
           ),
-
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -598,64 +682,52 @@ class RunnerHeroSummary extends StatelessWidget {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    navy.withValues(alpha: 0.96),
-                    navy.withValues(alpha: 0.82),
-                    teal.withValues(alpha: 0.58),
+                    navy.withOpacity(0.96),
+                    navy.withOpacity(0.82),
+                    teal.withOpacity(0.58),
                   ],
                 ),
               ),
             ),
           ),
-
           Positioned(
             right: -18,
             top: -18,
             child: Icon(
               Icons.delivery_dining_rounded,
-              color: Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withOpacity(0.12),
               size: 118,
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Today’s Earnings',
+                  'Total Completed Earnings',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.80),
+                    color: Colors.white.withOpacity(0.80),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-
                 const SizedBox(height: 5),
-
-                const Text(
-                  '₱420.00',
-                  style: TextStyle(
+                Text(
+                  earnings,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 30,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
                   ),
                 ),
-
                 const Spacer(),
-
-                const Row(
+                Row(
                   children: [
-                    Expanded(
-                      child: SummaryMetric(value: '3', label: 'Done'),
-                    ),
-                    Expanded(
-                      child: SummaryMetric(value: '12', label: 'Open'),
-                    ),
-                    Expanded(
-                      child: SummaryMetric(value: '4.9', label: 'Rating'),
-                    ),
+                    Expanded(child: SummaryMetric(value: completed, label: 'Done')),
+                    Expanded(child: SummaryMetric(value: open, label: 'Open')),
+                    Expanded(child: SummaryMetric(value: rating, label: 'Rating')),
                   ],
                 ),
               ],
@@ -1013,7 +1085,11 @@ class GigCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: () {
-          Navigator.pushNamed(context, '/grocery-pickup-details');
+          Navigator.pushNamed(
+            context,
+            '/grocery-pickup-details',
+            arguments: gig.errandId,
+          );
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(
@@ -1157,7 +1233,11 @@ class GigCard extends StatelessWidget {
                       label: 'Details',
                       icon: Icons.info_outline_rounded,
                       onTap: () {
-                        Navigator.pushNamed(context, '/grocery-pickup-details');
+                        Navigator.pushNamed(
+            context,
+            '/grocery-pickup-details',
+            arguments: gig.errandId,
+          );
                       },
                     ),
                   ),
@@ -1223,7 +1303,7 @@ class GigCard extends StatelessWidget {
                             );
                           }
                         } else {
-                          Navigator.pushNamed(context, '/execution-status');
+                          Navigator.pushReplacementNamed(context, '/execution-status');
                         }
                       },
                     ),
@@ -1462,11 +1542,11 @@ class RunnerBottomNav extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
+          color: Colors.white.withOpacity(0.96),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
@@ -1476,22 +1556,11 @@ class RunnerBottomNav extends StatelessWidget {
           children: [
             Expanded(
               child: RunnerNavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
-                isActive: active == 'home',
-                onTap: () {
-                  Navigator.pushNamed(context, '/runner-home');
-                },
-              ),
-            ),
-            Expanded(
-              child: RunnerNavItem(
                 icon: Icons.search_outlined,
                 activeIcon: Icons.search_rounded,
                 label: 'Gigs',
                 isActive: active == 'gigs',
-                onTap: () {},
+                onTap: () => Navigator.pushReplacementNamed(context, '/gig-finder'),
               ),
             ),
             Expanded(
@@ -1500,9 +1569,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.receipt_long_rounded,
                 label: 'Tasks',
                 isActive: active == 'tasks',
-                onTap: () {
-                  Navigator.pushNamed(context, '/execution-status');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/execution-status'),
               ),
             ),
             Expanded(
@@ -1510,10 +1577,8 @@ class RunnerBottomNav extends StatelessWidget {
                 icon: Icons.chat_bubble_outline_rounded,
                 activeIcon: Icons.chat_bubble_rounded,
                 label: 'Messages',
-                isActive: active == 'runner-messages',
-                onTap: () {
-                  Navigator.pushNamed(context, '/runner-messages');
-                },
+                isActive: active == 'messages' || active == 'runner-messages',
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-messages'),
               ),
             ),
             Expanded(
@@ -1522,9 +1587,7 @@ class RunnerBottomNav extends StatelessWidget {
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
                 isActive: active == 'profile',
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile');
-                },
+                onTap: () => Navigator.pushReplacementNamed(context, '/runner-profile'),
               ),
             ),
           ],
@@ -1534,7 +1597,7 @@ class RunnerBottomNav extends StatelessWidget {
   }
 }
 
-class RunnerNavItem extends StatelessWidget {
+class RunnerNavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -1550,46 +1613,63 @@ class RunnerNavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<RunnerNavItem> createState() => _RunnerNavItemState();
+}
+
+class _RunnerNavItemState extends State<RunnerNavItem> {
+  bool hovered = false;
   static const Color navy = Color(0xFF003C56);
   static const Color inactive = Color(0xFF94A3B8);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isActive ? navy : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? Colors.white : inactive,
-              size: 21,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactive,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 1,
+    final bool activeOrHover = widget.isActive || hovered;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? navy
+                : hovered
+                    ? const Color(0xFFEAF3F6)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                activeOrHover ? widget.activeIcon : widget.icon,
+                color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                size: 21,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: widget.isActive ? Colors.white : (hovered ? navy : inactive),
+                  fontSize: 10,
+                  fontWeight: activeOrHover ? FontWeight.w800 : FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+

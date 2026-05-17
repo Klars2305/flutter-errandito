@@ -1,30 +1,63 @@
-Use these temporary Firestore rules for testing only:
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
     match /users/{userId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
     }
+
     match /errands/{errandId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+
+      allow update: if request.auth != null &&
+        (
+          resource.data.requesterId == request.auth.uid ||
+          resource.data.runnerId == request.auth.uid ||
+          request.resource.data.runnerId == request.auth.uid ||
+          (
+            resource.data.participants is list &&
+            request.auth.uid in resource.data.participants
+          ) ||
+          (
+            request.resource.data.participants is list &&
+            request.auth.uid in request.resource.data.participants
+          )
+        );
+
+      allow delete: if false;
 
       match /messages/{messageId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null &&
+          (
+            get(/databases/$(database)/documents/errands/$(errandId)).data.requesterId == request.auth.uid ||
+            get(/databases/$(database)/documents/errands/$(errandId)).data.runnerId == request.auth.uid ||
+            (
+              get(/databases/$(database)/documents/errands/$(errandId)).data.participants is list &&
+              request.auth.uid in get(/databases/$(database)/documents/errands/$(errandId)).data.participants
+            )
+          );
+
+        allow create: if request.auth != null &&
+          (
+            get(/databases/$(database)/documents/errands/$(errandId)).data.requesterId == request.auth.uid ||
+            get(/databases/$(database)/documents/errands/$(errandId)).data.runnerId == request.auth.uid ||
+            (
+              get(/databases/$(database)/documents/errands/$(errandId)).data.participants is list &&
+              request.auth.uid in get(/databases/$(database)/documents/errands/$(errandId)).data.participants
+            )
+          ) &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 1000;
+
+        allow update, delete: if false;
       }
-    }
-    match /notifications/{notificationId} {
-      allow read, write: if request.auth != null;
-    }
-    match /reviews/{reviewId} {
-      allow read, write: if request.auth != null;
     }
   }
 }
-
-Collections used:
-- users: real requester/runner accounts and role
-- errands: posted errands, booking, payment status, visibility to runners, participants, unreadBy, lastMessage, lastMessageAt
-- errands/{errandId}/messages: live chat messages for each errand
-- notifications: booking and acceptance notifications
-- reviews: real rating records used to calculate averageRating and ratingCount
